@@ -31,8 +31,8 @@ export default function HomePage() {
 
       setMessage({ type: "ok", text: "You're on the list. Welcome! ✅" });
       setEmail("");
-    } catch (err: any) {
-      setMessage({ type: "err", text: err.message || "Something went wrong." });
+    } catch (err) {
+      setMessage({ type: "err", text: err instanceof Error ? err.message : "Something went wrong." });
     } finally {
       setLoading(false);
     }
