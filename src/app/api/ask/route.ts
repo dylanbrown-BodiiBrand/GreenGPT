@@ -14,33 +14,44 @@ const supabase = createClient(
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 // Config
-const RAG_BUCKET = process.env.SUPABASE_RAG_BUCKET || "rag-source"; // <-- set this in .env if different
-const SIGNED_URL_TTL = Number(process.env.RAG_SIGNED_URL_TTL_SECS || 600); // 10 minutes
+const RAG_BUCKET = process.env.SUPABASE_RAG_BUCKET || "rag-source";
+const SIGNED_URL_TTL = Number(process.env.RAG_SIGNED_URL_TTL_SECS || 600);
 
 // Budgets
 const MAX_MATCHES = Number(process.env.RAG_MAX_MATCHES || 6);
 const MAX_CHARS_PER_CHUNK = Number(process.env.RAG_MAX_CHARS_PER_CHUNK || 1800);
 const MAX_CONTEXT_TOKENS = Number(process.env.RAG_MAX_CONTEXT_TOKENS || 4500);
 
-// Broader retrieval when user asks for generalized advice / about-you
+// General intent retrieval width
 const GENERAL_INTENT_K = Number(process.env.RAG_GENERAL_K || 10);
 
-// Heuristic: detect "generalized advice" or "about you" prompts
+// Friendly-CTA config
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || "Dylan.Brown@BodiiBrand.com";
+const CAL_URL =
+  process.env.CAL_URL || "https://cal.com/the-green-executive-briefing";
+
 function isGeneralIntent(q: string): boolean {
   const s = (q || "").toLowerCase();
-  // "about you" / intro requests
   if (/\b(tell me about (you|your( self)?|this|the (tool|service|product)))\b/.test(s)) return true;
   if (/\b(who (are|r) (you|the author|the team)|what (do|does) (you|this) do)\b/.test(s)) return true;
   if (/\b(your (background|experience|credentials|expertise|bio|story))\b/.test(s)) return true;
-  // high-level / generalized advice queries
   if (/\b(general(ized)?|high[- ]level|overview|best practices|where do i start|how to get started)\b/.test(s)) return true;
   if (/\b(advice|guidance|framework|roadmap|strategy|playbook)\b/.test(s) && s.length < 140) return true;
-  // vague broad asks
   if (s.trim().length <= 24 && /\b(help|advice|guidance|tips)\b/.test(s)) return true;
   return false;
 }
 
 const approxTokens = (s: string) => Math.ceil(s.length / 4);
+
+function buildFriendlyFallback(question: string) {
+  return [
+    `I couldn’t find a definitive answer to “${question}” in our internal docs yet, but here’s how we typically help:`,
+    "",
+    "• Quick take: share your goal, scope, timeline, and any data you already track (spend, emissions boundaries, frameworks in scope like GHG Protocol/ISO/ESG).",
+    "• Next steps we’d propose: (1) clarify your objectives and reporting boundary, (2) map available data sources, (3) pick the right methodology, (4) outline a phased plan with quick wins.",
+    `• If you’d like a precise recommendation, reply with a bit more context—or email us at ${SUPPORT_EMAIL} or book a quick call: ${CAL_URL}.`,
+  ].join("\n");
+}
 
 export async function POST(req: NextRequest) {
   const { rid, dlog } = makeLogger("ask");
@@ -64,7 +75,6 @@ export async function POST(req: NextRequest) {
     const generalIntent = isGeneralIntent(question);
     dlog("intent", "generalIntent", { generalIntent });
 
-    // For generalized/about-you: broaden the query a bit so we pull in profile/case-study/service docs.
     const queryForEmbedding = generalIntent
       ? `${question} — overview • summary • profile • experience • services • case studies • methodology • credentials`
       : question;
@@ -88,7 +98,7 @@ export async function POST(req: NextRequest) {
     }
     dlog("retrieve.done", "hits", { hitCount: (hits || []).length });
 
-    // 3b) hydrate docs (grab filename + object_key for signing)
+    // 3b) hydrate docs
     const ids = Array.from(new Set((hits || []).map((h: any) => h.document_id)));
     let docMeta = new Map<string, { filename: string; object_key: string }>();
     if (ids.length) {
@@ -97,9 +107,7 @@ export async function POST(req: NextRequest) {
         .select("id, filename, object_key")
         .in("id", ids);
       if (!docErr && docs) {
-        docMeta = new Map(
-          docs.map((d: any) => [d.id, { filename: d.filename, object_key: d.object_key }])
-        );
+        docMeta = new Map(docs.map((d: any) => [d.id, { filename: d.filename, object_key: d.object_key }]));
       }
     }
 
@@ -148,17 +156,28 @@ export async function POST(req: NextRequest) {
       approxContextTokens: usedTokens,
     });
 
-    // 5) LLM
-    // Base rules
-    const baseSystem =
-      "You are precise. Use ONLY the provided context. If it’s insufficient, say you don't know. Cite as [#index].";
+    // If we have zero usable context, return a friendly fallback immediately.
+    if (!selected.length) {
+      const answer = buildFriendlyFallback(question);
+      dlog("response", "friendly-fallback-empty-context");
+      return NextResponse.json({ answer, citations: [], generalIntent });
+    }
 
-    // Persona add-on used when generalIntent = true:
-    // - Answer as the expert behind the provided documents.
-    // - Speak in first person only if the context supports it; otherwise use 'we'/'this practice'.
-    // - NEVER invent credentials or claims not present in the provided context.
+    // 5) LLM
+    const baseSystem = (() => {
+      // Make the assistant helpful even when context is thin.
+      return [
+        `You are precise and grounded. Use ONLY the provided context for factual claims and cite as [#index].`,
+        `If the context isn’t sufficient to answer confidently, do NOT say "I don't know".`,
+        `Instead: (1) briefly acknowledge the gap, (2) list a few concrete next steps or clarifying questions,`,
+        `(3) optionally share a short, high-level best-practice outline that is safe and non-specific,`,
+        `(4) end with this call to action: "If you'd like, email ${SUPPORT_EMAIL} or book a quick call: ${CAL_URL}."`,
+        `Never invent credentials or facts not in context.`,
+      ].join(" ");
+    })();
+
     const personaAddOn = generalIntent
-      ? " When the user asks for generalized advice or about you, answer as the expert behind the provided documents and summarize capabilities strictly from the context. If first-person details are present in the context, you may speak in first person; otherwise use 'we' or 'this practice'. Never claim credentials not explicitly in the context."
+      ? " When asked for generalized advice or about us, summarize capabilities strictly from the context. If first-person details are present, you may use them; otherwise use 'we'/'this practice'."
       : "";
 
     const system = baseSystem + personaAddOn;
@@ -174,7 +193,7 @@ export async function POST(req: NextRequest) {
       temperature: 0.2,
     });
     dlog("llm.done", "received");
-    const answer = resp.choices?.[0]?.message?.content ?? "No answer returned";
+    let answer = resp.choices?.[0]?.message?.content ?? "";
 
     // 6) citations with filenames
     const citationsRaw = selected.map(({ idx, h }) => {
@@ -189,7 +208,7 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    // 6a) Dedupe by document_id (keep earliest ref)
+    // 6a) Dedupe by document_id
     const seen = new Set<string>();
     const deduped = citationsRaw.filter((c) => {
       if (!c.document_id) return false;
@@ -198,7 +217,7 @@ export async function POST(req: NextRequest) {
       return true;
     });
 
-    // 6b) Sign URLs for each unique cited doc
+    // 6b) Sign URLs
     const withUrls = await Promise.all(
       deduped.map(async (c) => {
         if (!c.object_key) return { ...c, url: null as string | null };
@@ -213,8 +232,17 @@ export async function POST(req: NextRequest) {
       })
     );
 
-    // strip object_key from response; keep filename + url
     const citations = withUrls.map(({ object_key, ...rest }) => rest);
+
+    // 7) Post-process: if the model still hedged, replace with friendly fallback
+    const hedging =
+      !answer ||
+      /\b(i (do not|don't|cannot|can't) (know|tell)|not sure|insufficient|no (context|information))\b/i.test(answer);
+
+    if (hedging) {
+      dlog("response.postprocess", "hedge-detected -> friendly-fallback");
+      answer = buildFriendlyFallback(question);
+    }
 
     dlog("response", "success", {
       answerLen: answer.length,
