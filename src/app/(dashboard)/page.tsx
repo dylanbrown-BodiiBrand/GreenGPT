@@ -56,7 +56,7 @@ export default function HomePage() {
           autoComplete="email"
           required
           placeholder="Enter your email"
-          className="border border-green-700 rounded px-4 py-2 w-full sm:w-64"
+          className="text-black border border-green-700 rounded px-4 py-2 w-full sm:w-64"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={loading}
