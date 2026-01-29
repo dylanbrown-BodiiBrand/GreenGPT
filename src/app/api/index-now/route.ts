@@ -10,7 +10,8 @@ import { embedBatch } from "@/utils/embeddings";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
+  // Server-only: needs storage access and chunk writes; use service role.
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 // RAG budgets for indexing

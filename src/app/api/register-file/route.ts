@@ -5,7 +5,8 @@ import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 import { makeLogger, errorResponse } from "@/utils/debug";
 
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+// Server-only: needs storage signed URLs and metadata updates; use service role.
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 export async function POST(req: NextRequest) {
   const { rid, dlog } = makeLogger("register-file");

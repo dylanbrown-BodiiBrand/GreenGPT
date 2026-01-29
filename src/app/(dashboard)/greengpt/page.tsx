@@ -22,8 +22,7 @@ const CAL_URL = "https://cal.com/the-green-executive-briefing";
 
 const GreenGPT = () => {
   const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [citations, setCitations] = useState<Citation[]>([]);
+  const [currentQA, setCurrentQA] = useState<QA | null>(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<QA[]>([]);
 
@@ -46,8 +45,8 @@ const GreenGPT = () => {
 
     const asked = question.trim();
     setLoading(true);
-    setAnswer("");
-    setCitations([]);
+    setQuestion(""); // clear textbox immediately
+    setCurrentQA(null); // reset current display until response arrives
 
     try {
       const res = await fetch("/api/ask", {
@@ -60,16 +59,19 @@ const GreenGPT = () => {
       const a: string = data.answer || "No response from GreenGPT.";
       const cits: Citation[] = Array.isArray(data.citations) ? data.citations : [];
 
-      setAnswer(a);
-      setCitations(cits);
-
-      setHistory((prev) => [{ question: asked, answer: a, citations: cits, ts: Date.now() }, ...prev].slice(0, 3));
+      setHistory((prev) => {
+        const filtered = prev.filter((h) => h.question !== asked);
+        return [ ...(currentQA ? [currentQA] : []), ...filtered ].slice(0, 3);
+      });
+      setCurrentQA({ question: asked, answer: a, citations: cits, ts: Date.now() });
     } catch (err) {
       console.error(err);
       const a = "Error contacting GreenGPT.";
-      setAnswer(a);
-      setCitations([]);
-      setHistory((prev) => [{ question: asked, answer: a, citations: [], ts: Date.now() }, ...prev].slice(0, 3));
+      setHistory((prev) => {
+        const filtered = prev.filter((h) => h.question !== asked);
+        return [ ...(currentQA ? [currentQA] : []), ...filtered ].slice(0, 3);
+      });
+      setCurrentQA({ question: asked, answer: a, citations: [], ts: Date.now() });
     } finally {
       setLoading(false);
     }
@@ -150,12 +152,13 @@ const GreenGPT = () => {
           </button>
         </form>
 
-        {answer && (
+        {currentQA && (
           <div className="mt-6 bg-[#FAFAF4] border border-green-200 rounded-lg p-4">
+            <p className="font-semibold text-green-900 mb-2">Q: {currentQA.question}</p>
             <h2 className="font-semibold text-green-800 mb-2">Answer:</h2>
             <div className="prose prose-green max-w-none text-black">
               <ReactMarkdown remarkPlugins={[gfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
-                {answer}
+                {currentQA.answer}
               </ReactMarkdown>
             </div>
 
@@ -173,7 +176,7 @@ const GreenGPT = () => {
               </a>
             </div>
 
-            <Sources citations={citations} />
+            <Sources citations={currentQA.citations} />
           </div>
         )}
 
