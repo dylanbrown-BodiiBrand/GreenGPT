@@ -45,7 +45,7 @@ export default function HomePage() {
         Helping Businesses Navigate Green Accounting with Confidence
       </h1>
       <p className="text-gray-600 max-w-2xl mb-6">
-        Trusted by sustainability leaders to ensure compliance with GHG Protocol, ISO 14001, and ESG standards.
+        Trusted by corporate leaders to ensure compliance with GHG Protocol, ISO 14001, and NERC compliance standards.
         Access expert consulting and our AI-powered GreenGPT tool for accurate, actionable insights.
       </p>
 

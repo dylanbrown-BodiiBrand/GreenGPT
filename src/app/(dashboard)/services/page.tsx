@@ -42,7 +42,7 @@ export default function ServicesPage() {
               "GHG Protocol Scope 1, 2, and 3 inventories",
               "ISO 14001 Environmental Management Systems implementation & auditing",
               "ESG disclosure alignment (CSRD, SEC Climate Rules, SASB, TCFD, GRI)",
-              "Regulatory compliance tracking and risk assessments",
+              "NERC compliance tracking and risk assessments",
             ]}
             outcome="Reduced compliance risk, stronger investor confidence, and audit-ready reporting."
           />
