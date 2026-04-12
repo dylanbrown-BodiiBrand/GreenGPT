@@ -57,6 +57,9 @@ export default function NavigationMenu() {
       <Link href="/greengpt" className={linkClass("/greengpt")}>
         GreenGPT
       </Link>
+      <Link href="/ehs-calendar" className={linkClass("/ehs-calendar")}>
+        EHS Calendar
+      </Link>
       <Link href="/contact" className={linkClass("/contact")}>
         Contact
       </Link>
@@ -107,6 +110,11 @@ export default function NavigationMenu() {
         <li>
         <Link href="/greengpt" onClick={closeMenu}>
           GreenGPT
+        </Link>
+        </li>
+        <li>
+        <Link href="/ehs-calendar" onClick={closeMenu}>
+          EHS Calendar
         </Link>
         </li>
         <li>

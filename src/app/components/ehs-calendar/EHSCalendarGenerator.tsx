@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- rule rows/events are heterogeneous data */
 import { useState, useMemo, useCallback, useEffect, type ReactNode } from "react";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -415,7 +416,9 @@ function TimelineView({ events }: { events: any[] }) {
   return (
     <div style={{ position: "relative", paddingLeft: 30 }}>
       <div style={{ position: "absolute", left: 11, top: 0, bottom: 0, width: 2, background: BRAND.sage }} />
-      {Object.entries(byMonth).sort(([a], [b]) => a - b).map(([mo, evts], idx) => (
+      {Object.entries(byMonth)
+        .sort(([a], [b]) => Number(a) - Number(b))
+        .map(([mo, evts], idx) => (
         <div key={mo} style={{ marginBottom: 28, position: "relative", animation: `slideIn 0.35s ease ${idx * 0.06}s both` }}>
           <div style={{
             position: "absolute", left: -25, top: 5, width: 12, height: 12,
@@ -483,7 +486,7 @@ function Stats({ events }: { events: any[] }) {
           <div style={{
             fontFamily: "'IBM Plex Mono', monospace", fontSize: 22, fontWeight: 700,
             color: c.color, lineHeight: 1,
-          }}>{stats[k]}</div>
+          }}>{stats[k as CategoryKey]}</div>
           <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: 10, color: "#999", marginTop: 4, fontWeight: 400 }}>{c.label}</div>
         </div>
       ))}
@@ -757,7 +760,9 @@ export default function EHSCalendarGenerator({
                   Your Compliance Calendar
                 </h2>
                 <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, color: "#888", fontWeight: 300, margin: 0 }}>
-                  <strong style={{ color: BRAND.emerald, fontWeight: 700 }}>{events.length}</strong> obligations · {INDUSTRIES[industry]?.label} · {jurisdictions.length > 0 ? `Federal + ${jurisdictions.join(", ")}` : "Federal"} · {employees} employees
+                  <strong style={{ color: BRAND.emerald, fontWeight: 700 }}>{events.length}</strong> obligations ·{" "}
+                  {industry ? INDUSTRIES[industry as keyof typeof INDUSTRIES]?.label : "—"} ·{" "}
+                  {jurisdictions.length > 0 ? `Federal + ${jurisdictions.join(", ")}` : "Federal"} · {employees} employees
                 </p>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -818,7 +823,7 @@ export default function EHSCalendarGenerator({
                 <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(16,185,129,0.15)" }} />
                 <div style={{ position: "relative" }}>
                   <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: BRAND.gold, marginBottom: 8 }}>
-                    You're Seeing Federal Rules Only
+                    {"You're Seeing Federal Rules Only"}
                   </div>
                   <h3 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 22, margin: "0 0 8px", fontWeight: 400 }}>
                     Unlock state-specific obligations, export, and reminders
