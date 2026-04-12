@@ -1,5 +1,4 @@
 "use client";
-
 /* eslint-disable @typescript-eslint/no-explicit-any -- rule rows/events are heterogeneous data */
 import { useState, useMemo, useCallback, useEffect, type ReactNode } from "react";
 
