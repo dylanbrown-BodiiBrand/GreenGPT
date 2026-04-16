@@ -954,6 +954,177 @@ export default function EHSCalendarLanding() {
         </div>
       </Section>
 
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* SECTION 9 — CONTACT                                               */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      <Section id="contact" bg={B.white}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <h2 style={{ fontFamily: serif, fontSize: 28, color: B.forest, margin: "0 0 8px" }}>Contact</h2>
+          <p style={{ fontSize: 14, color: "#888", fontWeight: 300, margin: 0 }}>
+            Tell us what you need — we&apos;ll follow up by email.
+          </p>
+        </div>
+
+        <form onSubmit={onSubmitContact} style={{ maxWidth: 640, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={{ display: "block", fontFamily: mono, fontSize: 10, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: "#999", marginBottom: 8 }}>
+                Name
+              </label>
+              <input
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                required
+                autoComplete="name"
+                disabled={contactLoading}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  border: "1.5px solid #E8ECE9",
+                  fontSize: 14,
+                  fontFamily: sans,
+                  outline: "none",
+                  background: B.white,
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontFamily: mono, fontSize: 10, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: "#999", marginBottom: 8 }}>
+                Email
+              </label>
+              <input
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                required
+                autoComplete="email"
+                disabled={contactLoading}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  border: "1.5px solid #E8ECE9",
+                  fontSize: 14,
+                  fontFamily: sans,
+                  outline: "none",
+                  background: B.white,
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontFamily: mono, fontSize: 10, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: "#999", marginBottom: 8 }}>
+                Phone (optional)
+              </label>
+              <input
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                autoComplete="tel"
+                disabled={contactLoading}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  border: "1.5px solid #E8ECE9",
+                  fontSize: 14,
+                  fontFamily: sans,
+                  outline: "none",
+                  background: B.white,
+                }}
+              />
+            </div>
+
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={{ display: "block", fontFamily: mono, fontSize: 10, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: "#999", marginBottom: 8 }}>
+                Company (optional)
+              </label>
+              <input
+                value={contactCompany}
+                onChange={(e) => setContactCompany(e.target.value)}
+                autoComplete="organization"
+                disabled={contactLoading}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  border: "1.5px solid #E8ECE9",
+                  fontSize: 14,
+                  fontFamily: sans,
+                  outline: "none",
+                  background: B.white,
+                }}
+              />
+            </div>
+
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={{ display: "block", fontFamily: mono, fontSize: 10, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: "#999", marginBottom: 8 }}>
+                Message
+              </label>
+              <textarea
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
+                required
+                rows={5}
+                disabled={contactLoading}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  border: "1.5px solid #E8ECE9",
+                  fontSize: 14,
+                  fontFamily: sans,
+                  outline: "none",
+                  background: B.white,
+                  resize: "vertical",
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
+            <button
+              type="submit"
+              disabled={contactLoading}
+              style={{
+                background: B.forest,
+                color: B.white,
+                border: "none",
+                borderRadius: 10,
+                padding: "12px 22px",
+                fontSize: 14,
+                fontWeight: 700,
+                fontFamily: sans,
+                cursor: contactLoading ? "default" : "pointer",
+                opacity: contactLoading ? 0.65 : 1,
+              }}
+            >
+              {contactLoading ? "Sending..." : "Send message"}
+            </button>
+          </div>
+
+          {contactNotice && (
+            <p
+              style={{
+                marginTop: 12,
+                textAlign: "center",
+                fontSize: 13,
+                fontWeight: 500,
+                color: contactNotice.type === "ok" ? B.forest : B.coral,
+              }}
+            >
+              {contactNotice.text}
+            </p>
+          )}
+        </form>
+      </Section>
+
       {/* ─── FOOTER CTA ─── */}
       <div style={{ background: B.charcoal, color: B.white, padding: "48px 24px", textAlign: "center" }}>
         <h3 style={{ fontFamily: serif, fontSize: 26, margin: "0 0 12px", fontWeight: 400 }}>Stop tracking compliance on spreadsheets</h3>
