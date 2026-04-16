@@ -273,6 +273,14 @@ export default function EHSCalendarLanding() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const toolRef = useRef<HTMLElement | null>(null);
 
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactCompany, setContactCompany] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactNotice, setContactNotice] = useState<null | { type: "ok" | "err"; text: string }>(null);
+
   const events = useMemo(() => {
     if (!industry) return [];
     let e = genEvents(RULES, industry, jurisdictions, flags, employees);
@@ -293,6 +301,43 @@ export default function EHSCalendarLanding() {
   };
 
   const tryLockedFeature = () => setShowUpgrade(true);
+
+  const onSubmitContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setContactNotice(null);
+
+    try {
+      setContactLoading(true);
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: contactName,
+          email: contactEmail,
+          company: contactCompany,
+          phone: contactPhone,
+          message: contactMessage,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Failed to send message.");
+
+      setContactNotice({ type: "ok", text: "Thanks — we received your message." });
+      setContactName("");
+      setContactEmail("");
+      setContactCompany("");
+      setContactPhone("");
+      setContactMessage("");
+    } catch (err) {
+      setContactNotice({
+        type: "err",
+        text: err instanceof Error ? err.message : "Something went wrong.",
+      });
+    } finally {
+      setContactLoading(false);
+    }
+  };
 
   return (
     <div style={{ background: B.bone, fontFamily: sans }}>
