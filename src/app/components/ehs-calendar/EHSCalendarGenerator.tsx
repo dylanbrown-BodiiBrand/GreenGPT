@@ -1,5 +1,5 @@
 "use client";
-/* eslint-disable @typescript-eslint/no-explicit-any -- rule rows/events are heterogeneous data */
+
 import { useState, useMemo, useCallback, useEffect, type ReactNode } from "react";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -105,7 +105,37 @@ const CATEGORIES = {
 
 type CategoryKey = keyof typeof CATEGORIES;
 
-const RULES = [
+/** Row from the static rules table (before expansion into dated events). */
+interface EhsRule {
+  id?: string;
+  name: string;
+  category: CategoryKey;
+  industries: "all" | string[];
+  jurisdictions: string[];
+  conditions: string[];
+  employeeMin?: number;
+  monthlyDay?: number;
+  weeklyDay?: string;
+  quarterlyMonths?: number[];
+  month?: number;
+  day?: number;
+  description?: string;
+  citation?: string;
+  frequency?: string;
+  authority?: string;
+  endMonth?: number;
+  endDay?: number;
+}
+
+/** Rule plus generated calendar fields. */
+type EhsCalendarEvent = EhsRule & {
+  eventMonth: number;
+  eventDay: number | null;
+  sk: number;
+  note?: string;
+};
+
+const RULES: EhsRule[] = [
   // ── UNIVERSAL FEDERAL ──
   { id: "osha300a", name: "OSHA 300A Log Posting", category: "reporting", month: 2, day: 1, endMonth: 4, endDay: 30, description: "Post OSHA 300A Summary (Feb 1 – Apr 30). Required for establishments with 11+ employees.", citation: "29 CFR 1904.32", frequency: "annual", authority: "OSHA", industries: "all", jurisdictions: ["federal"], conditions: [], employeeMin: 11 },
   { id: "osha300_elec", name: "OSHA Electronic Injury Reporting", category: "filing", month: 3, day: 2, description: "Submit Form 300A data electronically via OSHA ITA portal.", citation: "29 CFR 1904.41", frequency: "annual", authority: "OSHA", industries: "all", jurisdictions: ["federal"], conditions: [], employeeMin: 20 },
@@ -158,9 +188,14 @@ const RULES = [
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MONTH_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function generateEvents(rules: any[], industry: string, jurisdictions: string[], flags: string[], employeeCount: number) {
-  const events: any[] = [];
+function generateEvents(
+  rules: EhsRule[],
+  industry: string,
+  jurisdictions: string[],
+  flags: string[],
+  employeeCount: number
+): EhsCalendarEvent[] {
+  const events: EhsCalendarEvent[] = [];
   const activeJ = new Set(["federal", ...jurisdictions]);
   const activeF = new Set(flags);
   for (const r of rules) {
@@ -168,14 +203,41 @@ function generateEvents(rules: any[], industry: string, jurisdictions: string[],
     if (!r.jurisdictions.some((j: string) => activeJ.has(j))) continue;
     if (r.conditions.length > 0 && !r.conditions.some((c: string) => activeF.has(c))) continue;
     if (r.employeeMin && employeeCount < r.employeeMin) continue;
-    if (r.monthlyDay) {
-      for (let m = 0; m < 12; m++) events.push({ ...r, eventMonth: m, eventDay: r.monthlyDay, sk: m * 100 + r.monthlyDay });
+    if (r.monthlyDay != null) {
+      for (let m = 0; m < 12; m++) {
+        events.push({
+          ...r,
+          eventMonth: m,
+          eventDay: r.monthlyDay,
+          sk: m * 100 + r.monthlyDay,
+        });
+      }
     } else if (r.weeklyDay) {
-      for (let m = 0; m < 12; m++) events.push({ ...r, eventMonth: m, eventDay: null, sk: m * 100 + 1, note: `Every ${r.weeklyDay}` });
-    } else if (r.quarterlyMonths) {
-      for (const qm of r.quarterlyMonths) events.push({ ...r, eventMonth: qm - 1, eventDay: r.day, sk: (qm - 1) * 100 + r.day });
-    } else if (r.month) {
-      events.push({ ...r, eventMonth: r.month - 1, eventDay: r.day, sk: (r.month - 1) * 100 + r.day });
+      for (let m = 0; m < 12; m++) {
+        events.push({
+          ...r,
+          eventMonth: m,
+          eventDay: null,
+          sk: m * 100 + 1,
+          note: `Every ${r.weeklyDay}`,
+        });
+      }
+    } else if (r.quarterlyMonths && r.day != null) {
+      for (const qm of r.quarterlyMonths) {
+        events.push({
+          ...r,
+          eventMonth: qm - 1,
+          eventDay: r.day,
+          sk: (qm - 1) * 100 + r.day,
+        });
+      }
+    } else if (r.month && r.day != null) {
+      events.push({
+        ...r,
+        eventMonth: r.month - 1,
+        eventDay: r.day,
+        sk: (r.month - 1) * 100 + r.day,
+      });
     }
   }
   return events.sort((a, b) => a.sk - b.sk);
@@ -346,9 +408,9 @@ function FlagToggle({
 
 // ─── CALENDAR VIEWS ────────────────────────────────────────────────────────
 
-function MonthGrid({ events }: { events: any[] }) {
+function MonthGrid({ events }: { events: EhsCalendarEvent[] }) {
   const byMonth = useMemo(() => {
-    const m: any[][] = Array.from({ length: 12 }, () => []);
+    const m: EhsCalendarEvent[][] = Array.from({ length: 12 }, () => []);
     events.forEach((e) => m[e.eventMonth].push(e));
     return m;
   }, [events]);
@@ -402,9 +464,9 @@ function MonthGrid({ events }: { events: any[] }) {
   );
 }
 
-function TimelineView({ events }: { events: any[] }) {
+function TimelineView({ events }: { events: EhsCalendarEvent[] }) {
   const byMonth = useMemo(() => {
-    const m: Record<number, any[]> = {};
+    const m: Record<number, EhsCalendarEvent[]> = {};
     events.forEach((e) => {
       if (!m[e.eventMonth]) m[e.eventMonth] = [];
       m[e.eventMonth].push(e);
@@ -463,7 +525,7 @@ function TimelineView({ events }: { events: any[] }) {
   );
 }
 
-function Stats({ events }: { events: any[] }) {
+function Stats({ events }: { events: EhsCalendarEvent[] }) {
   const stats = useMemo(() => {
     const s = {} as Record<CategoryKey, number>;
     (Object.keys(CATEGORIES) as CategoryKey[]).forEach((k) => (s[k] = 0));
