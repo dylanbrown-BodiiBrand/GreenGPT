@@ -45,9 +45,6 @@ export default function NavigationMenu() {
       <Link href="/" className={linkClass("/")}>
         Home
       </Link>
-      <Link href="/about" className={linkClass("/about")}>
-        About
-      </Link>
       <Link href="/services" className={linkClass("/services")}>
         Services
       </Link>
@@ -56,9 +53,6 @@ export default function NavigationMenu() {
       </Link>
       <Link href="/greengpt" className={linkClass("/greengpt")}>
         GreenGPT
-      </Link>
-      <Link href="/ehs-calendar" className={linkClass("/ehs-calendar")}>
-        EHS Calendar
       </Link>
       <Link href="/contact" className={linkClass("/contact")}>
         Contact
@@ -93,11 +87,6 @@ export default function NavigationMenu() {
         </Link>
         </li>
         <li>
-        <Link href="/about" onClick={closeMenu}>
-          About
-        </Link>
-        </li>
-        <li>
         <Link href="/services" onClick={closeMenu}>
           Services
         </Link>
@@ -110,11 +99,6 @@ export default function NavigationMenu() {
         <li>
         <Link href="/greengpt" onClick={closeMenu}>
           GreenGPT
-        </Link>
-        </li>
-        <li>
-        <Link href="/ehs-calendar" onClick={closeMenu}>
-          EHS Calendar
         </Link>
         </li>
         <li>
