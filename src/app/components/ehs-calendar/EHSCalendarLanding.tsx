@@ -9,6 +9,13 @@ import {
   type CSSProperties,
 } from "react";
 import Link from "next/link";
+import {
+  CATEGORIES,
+  RULES,
+  genEvents,
+  type CategoryKey,
+  type LandingEvent,
+} from "@/lib/ehs-calendar/rulesEngine";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE GREEN EXECUTIVE BRIEFING — EHS COMPLIANCE CALENDAR
@@ -63,126 +70,8 @@ const FLAGS = {
   lead_exposure: { label: "Lead exposure potential", icon: "🧪", free: false },
 };
 
-const CATEGORIES = {
-  filing: { label: "Regulatory Filing", color: "#E8614D", icon: "📋" },
-  inspection: { label: "Inspection", color: "#3B82F6", icon: "🔍" },
-  training: { label: "Training", color: "#10B981", icon: "🎓" },
-  permit: { label: "Permit / License", color: "#D4A017", icon: "📄" },
-  reporting: { label: "Reporting", color: "#8B5CF6", icon: "📊" },
-  maintenance: { label: "Maintenance", color: "#06B6D4", icon: "🔧" },
-};
-
-type CategoryKey = keyof typeof CATEGORIES;
-
-interface LandingRule {
-  id?: string;
-  name: string;
-  category: CategoryKey;
-  industries: "all" | string[];
-  jurisdictions: string[];
-  conditions: string[];
-  employeeMin?: number;
-  monthlyDay?: number;
-  weeklyDay?: string;
-  quarterlyMonths?: number[];
-  month?: number;
-  day?: number;
-  description?: string;
-  citation?: string;
-  frequency?: string;
-  authority?: string;
-}
-
-type LandingEvent = LandingRule & {
-  eM: number;
-  eD: number | null;
-  sk: number;
-  note?: string;
-};
-
-const RULES: LandingRule[] = [
-  { id:"osha300a",name:"OSHA 300A Log Posting",category:"reporting",month:2,day:1,description:"Post OSHA 300A Summary (Feb 1 – Apr 30)",citation:"29 CFR 1904.32",frequency:"annual",authority:"OSHA",industries:"all",jurisdictions:["federal"],conditions:[],employeeMin:11},
-  { id:"osha300e",name:"OSHA Electronic Injury Reporting",category:"filing",month:3,day:2,description:"Submit Form 300A data via ITA portal",citation:"29 CFR 1904.41",frequency:"annual",authority:"OSHA",industries:"all",jurisdictions:["federal"],conditions:[],employeeMin:20},
-  { id:"tier2",name:"Tier II Chemical Inventory (EPCRA §312)",category:"filing",month:3,day:1,description:"Submit Tier II to SERC, LEPC, and fire dept",citation:"40 CFR 370",frequency:"annual",authority:"EPA",industries:"all",jurisdictions:["federal"],conditions:["hazmat_storage"]},
-  { id:"tri",name:"TRI Form R (EPCRA §313)",category:"filing",month:7,day:1,description:"Toxic Release Inventory for listed chemicals",citation:"40 CFR 372",frequency:"annual",authority:"EPA",industries:["manufacturing","oil_gas","food_bev"],jurisdictions:["federal"],conditions:["hazmat_storage"],employeeMin:10},
-  { id:"hazbi",name:"Hazardous Waste Biennial Report",category:"filing",month:3,day:1,description:"EPA Form 8700-13 A/B for LQGs",citation:"40 CFR 262.41",frequency:"biennial",authority:"EPA",industries:"all",jurisdictions:["federal"],conditions:["hazwaste_gen"]},
-  { id:"spcc",name:"SPCC Plan Annual Review",category:"inspection",month:1,day:15,description:"Review and re-certify SPCC plan",citation:"40 CFR 112.5",frequency:"annual",authority:"EPA",industries:["manufacturing","oil_gas","warehousing"],jurisdictions:["federal"],conditions:["hazmat_storage"]},
-  { id:"swdmr",name:"Stormwater DMR Submission",category:"filing",quarterlyMonths:[3,6,9,12],day:28,description:"Discharge Monitoring Report for NPDES",citation:"40 CFR 122",frequency:"quarterly",authority:"EPA",industries:"all",jurisdictions:["federal"],conditions:["wastewater"]},
-  { id:"psm",name:"PSM Compliance Audit",category:"inspection",month:1,day:1,description:"Process Safety Management audit (min every 3 yrs)",citation:"29 CFR 1910.119(o)",frequency:"annual",authority:"OSHA",industries:["manufacturing","oil_gas","food_bev"],jurisdictions:["federal"],conditions:["psm_rmp"]},
-  { id:"rmp",name:"RMP Plan Review",category:"filing",month:6,day:21,description:"Review Risk Management Plan",citation:"40 CFR 68",frequency:"annual",authority:"EPA",industries:["manufacturing","oil_gas","food_bev"],jurisdictions:["federal"],conditions:["psm_rmp"]},
-  { id:"hc",name:"HazCom / GHS Refresher",category:"training",month:1,day:15,description:"Annual Hazard Communication training",citation:"29 CFR 1910.1200(h)",frequency:"annual",authority:"OSHA",industries:"all",jurisdictions:["federal"],conditions:["hazmat_storage"]},
-  { id:"hw8",name:"HAZWOPER 8-hr Refresher",category:"training",month:3,day:15,description:"Annual refresher for HAZWOPER workers",citation:"29 CFR 1910.120(e)(8)",frequency:"annual",authority:"OSHA",industries:["manufacturing","oil_gas","construction"],jurisdictions:["federal"],conditions:["hazmat_storage"]},
-  { id:"bbp",name:"Bloodborne Pathogens Training",category:"training",month:2,day:1,description:"Annual BBP training",citation:"29 CFR 1910.1030(g)(2)",frequency:"annual",authority:"OSHA",industries:["healthcare","construction"],jurisdictions:["federal"],conditions:[]},
-  { id:"fk",name:"Forklift Operator Re-Evaluation",category:"training",month:4,day:1,description:"PIT operator competency evaluation",citation:"29 CFR 1910.178(l)",frequency:"triennial",authority:"OSHA",industries:"all",jurisdictions:["federal"],conditions:["powered_vehicles"]},
-  { id:"cs",name:"Confined Space Entry Training",category:"training",month:5,day:1,description:"PRCS program review and refresher",citation:"29 CFR 1910.146(g)",frequency:"annual",authority:"OSHA",industries:["manufacturing","oil_gas","construction"],jurisdictions:["federal"],conditions:["confined_spaces"]},
-  { id:"fp",name:"Fall Protection Training",category:"training",month:2,day:15,description:"Annual fall protection for workers >6 ft",citation:"29 CFR 1926.503",frequency:"annual",authority:"OSHA",industries:["construction"],jurisdictions:["federal"],conditions:["fall_hazards"]},
-  { id:"hcp",name:"Hearing Conservation Program",category:"training",month:6,day:1,description:"Audiometric testing + training",citation:"29 CFR 1910.95",frequency:"annual",authority:"OSHA",industries:["manufacturing","construction","oil_gas"],jurisdictions:["federal"],conditions:["noise_exposure"]},
-  { id:"rcra",name:"RCRA Hazardous Waste Training",category:"training",month:1,day:31,description:"Annual training for hazwaste personnel",citation:"40 CFR 265.16",frequency:"annual",authority:"EPA",industries:"all",jurisdictions:["federal"],conditions:["hazwaste_gen"]},
-  { id:"rad",name:"Radiation Safety Refresher",category:"training",month:4,day:15,description:"Dosimetry, ALARA, emergency procedures",citation:"10 CFR 19.12",frequency:"annual",authority:"NRC",industries:["healthcare"],jurisdictions:["federal"],conditions:["radiation"]},
-  { id:"fem",name:"Fire Extinguisher Monthly Check",category:"inspection",monthlyDay:1,description:"Visual inspection of all extinguishers",citation:"29 CFR 1910.157(e)",frequency:"monthly",authority:"OSHA",industries:"all",jurisdictions:["federal"],conditions:[]},
-  { id:"fea",name:"Fire Extinguisher Annual Service",category:"maintenance",month:1,day:10,description:"Professional maintenance per NFPA 10",citation:"NFPA 10 §7.3",frequency:"annual",authority:"NFPA",industries:"all",jurisdictions:["federal"],conditions:[]},
-  { id:"ew",name:"Eyewash / Shower Weekly Test",category:"inspection",weeklyDay:"Monday",description:"Activate plumbed eyewash and showers",citation:"ANSI Z358.1",frequency:"weekly",authority:"ANSI",industries:"all",jurisdictions:["federal"],conditions:["hazmat_storage"]},
-  { id:"cr",name:"Crane / Hoist Annual Inspection",category:"maintenance",month:3,day:1,description:"Annual exam of cranes and lifting devices",citation:"29 CFR 1910.179(j)",frequency:"annual",authority:"OSHA",industries:["manufacturing","construction","warehousing"],jurisdictions:["federal"],conditions:[]},
-  { id:"gen",name:"Emergency Generator Monthly Test",category:"maintenance",monthlyDay:15,description:"Monthly load test per NFPA 110",citation:"NFPA 110 §8.4",frequency:"monthly",authority:"NFPA",industries:"all",jurisdictions:["federal"],conditions:[]},
-  { id:"ldar",name:"LDAR Fugitive Emissions",category:"inspection",quarterlyMonths:[1,4,7,10],day:15,description:"Leak Detection & Repair monitoring",citation:"40 CFR 60/63",frequency:"quarterly",authority:"EPA",industries:["manufacturing","oil_gas"],jurisdictions:["federal"],conditions:["air_permits"]},
-  { id:"bl",name:"Boiler / Pressure Vessel Inspection",category:"maintenance",month:9,day:1,description:"Annual boiler inspection",citation:"ASME / State",frequency:"annual",authority:"State",industries:["manufacturing","healthcare","food_bev"],jurisdictions:["federal"],conditions:[]},
-  { id:"amm",name:"Ammonia System Quarterly Check",category:"maintenance",quarterlyMonths:[1,4,7,10],day:1,description:"Ammonia refrigeration inspection",citation:"IIAR 6",frequency:"quarterly",authority:"OSHA/IIAR",industries:["food_bev","warehousing"],jurisdictions:["federal"],conditions:["ammonia_refrig"]},
-  // California
-  { id:"cap65",name:"Prop 65 Warning Review",category:"reporting",month:1,day:31,description:"Review Proposition 65 warnings",citation:"CA HSC §25249.6",frequency:"annual",authority:"OEHHA",industries:"all",jurisdictions:["CA"],conditions:["hazmat_storage"]},
-  { id:"cahm",name:"HMBP / CUPA Annual Filing",category:"filing",month:3,day:1,description:"Hazardous Materials Business Plan via CERS",citation:"CA HSC §25505",frequency:"annual",authority:"CalEPA",industries:"all",jurisdictions:["CA"],conditions:["hazmat_storage"]},
-  { id:"caii",name:"IIPP Annual Review",category:"inspection",month:2,day:15,description:"Injury & Illness Prevention Program review",citation:"8 CCR §3203",frequency:"annual",authority:"Cal/OSHA",industries:"all",jurisdictions:["CA"],conditions:[]},
-  { id:"caht",name:"Heat Illness Prevention Update",category:"inspection",month:4,day:1,description:"Update heat illness procedures",citation:"8 CCR §3395",frequency:"annual",authority:"Cal/OSHA",industries:["construction","warehousing"],jurisdictions:["CA"],conditions:[]},
-  // Texas
-  { id:"txei",name:"TCEQ Emissions Inventory",category:"filing",month:3,day:31,description:"Annual point source emissions inventory",citation:"30 TAC §101.10",frequency:"annual",authority:"TCEQ",industries:["manufacturing","oil_gas"],jurisdictions:["TX"],conditions:["air_permits"]},
-  { id:"txt2",name:"TCEQ Tier II Filing",category:"filing",month:3,day:1,description:"Texas-specific Tier II with LEPC requirements",citation:"THSC §505",frequency:"annual",authority:"TCEQ",industries:"all",jurisdictions:["TX"],conditions:["hazmat_storage"]},
-  { id:"txsw",name:"TPDES Stormwater Renewal",category:"permit",month:8,day:1,description:"Multi-Sector General Permit renewal",citation:"30 TAC §281",frequency:"annual",authority:"TCEQ",industries:["manufacturing","construction"],jurisdictions:["TX"],conditions:["wastewater"]},
-  // New York
-  { id:"nyck",name:"NY Community Right-to-Know",category:"filing",month:3,day:1,description:"Chemical reporting under NY RTK",citation:"NY ECL §37",frequency:"annual",authority:"NY DEC",industries:"all",jurisdictions:["NY"],conditions:["hazmat_storage"]},
-  { id:"nybk",name:"PBS / CBS Registration Renewal",category:"permit",month:7,day:1,description:"Petroleum/Chemical Bulk Storage renewal",citation:"6 NYCRR §613",frequency:"annual",authority:"NY DEC",industries:["manufacturing","oil_gas","warehousing"],jurisdictions:["NY"],conditions:["hazmat_storage"]},
-];
-
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MONTH_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-
-function genEvents(
-  rules: LandingRule[],
-  industry: string,
-  jurisdictions: string[],
-  flags: string[],
-  emp: number
-): LandingEvent[] {
-  const ev: LandingEvent[] = [];
-  const aJ = new Set(["federal", ...jurisdictions]);
-  const aF = new Set(flags);
-  for (const r of rules) {
-    if (r.industries !== "all" && !r.industries.includes(industry)) continue;
-    if (!r.jurisdictions.some((j: string) => aJ.has(j))) continue;
-    if (r.conditions.length > 0 && !r.conditions.some((c: string) => aF.has(c))) continue;
-    if (r.employeeMin && emp < r.employeeMin) continue;
-    if (r.monthlyDay != null) {
-      for (let m = 0; m < 12; m++) {
-        ev.push({ ...r, eM: m, eD: r.monthlyDay, sk: m * 100 + r.monthlyDay });
-      }
-    } else if (r.weeklyDay) {
-      for (let m = 0; m < 12; m++) {
-        ev.push({
-          ...r,
-          eM: m,
-          eD: null,
-          sk: m * 100 + 1,
-          note: `Every ${r.weeklyDay}`,
-        });
-      }
-    } else if (r.quarterlyMonths && r.day != null) {
-      for (const q of r.quarterlyMonths) {
-        ev.push({ ...r, eM: q - 1, eD: r.day, sk: (q - 1) * 100 + r.day });
-      }
-    } else if (r.month != null && r.day != null) {
-      ev.push({ ...r, eM: r.month - 1, eD: r.day, sk: (r.month - 1) * 100 + r.day });
-    }
-  }
-  return ev.sort((a, b) => a.sk - b.sk);
-}
 
 // ─── SHARED STYLES ─────────────────────────────────────────────────────────
 const serif = "'Instrument Serif', serif";
@@ -268,7 +157,9 @@ export default function EHSCalendarLanding() {
   const [calView, setCalView] = useState("grid");
   const [filterCat, setFilterCat] = useState<CategoryKey | null>(null);
   const [email, setEmail] = useState("");
-  const [emailCaptured, setEmailCaptured] = useState(false);
+  const [saveEmailLoading, setSaveEmailLoading] = useState(false);
+  const [saveEmailError, setSaveEmailError] = useState<string | null>(null);
+  const [saveEmailDone, setSaveEmailDone] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const toolRef = useRef<HTMLElement | null>(null);
@@ -301,6 +192,40 @@ export default function EHSCalendarLanding() {
   };
 
   const tryLockedFeature = () => setShowUpgrade(true);
+
+  const sendCalendarEmail = async () => {
+    setSaveEmailError(null);
+    const trimmed = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setSaveEmailError("Please enter a valid email.");
+      return;
+    }
+    if (!industry) {
+      setSaveEmailError("Generate your calendar first, then save.");
+      return;
+    }
+    try {
+      setSaveEmailLoading(true);
+      const res = await fetch("/api/ehs-calendar/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: trimmed,
+          industry,
+          jurisdictions,
+          flags,
+          employees,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Failed to send calendar.");
+      setSaveEmailDone(true);
+    } catch (err) {
+      setSaveEmailError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSaveEmailLoading(false);
+    }
+  };
 
   const onSubmitContact = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -721,36 +646,66 @@ export default function EHSCalendarLanding() {
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* SECTION 3 — EMAIL CAPTURE (shows after results)                   */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
-      {step === 3 && !emailCaptured && (
+      {step === 3 && !saveEmailDone && (
         <Section bg={B.mint}>
           <div style={{ maxWidth: 520, margin: "0 auto", textAlign: "center" }}>
             <h3 style={{ fontFamily: serif, fontSize: 24, color: B.forest, margin: "0 0 8px" }}>
-              Save your calendar and get regulatory alerts
+              Email your compliance calendar
             </h3>
             <p style={{ fontSize: 14, color: "#666", fontWeight: 300, margin: "0 0 24px", lineHeight: 1.6 }}>
-              We will email you when OSHA, EPA, or state agencies update rules that affect your facility. No spam — just compliance updates that matter.
+              We will send a personalized <strong>.ics</strong> file to your inbox so you can import deadlines into Outlook, Google Calendar, or Apple Calendar.
             </p>
-            <div style={{ display: "flex", gap: 10, maxWidth: 420, margin: "0 auto" }}>
-              <input type="email" placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)}
+            <div style={{ display: "flex", gap: 10, maxWidth: 420, margin: "0 auto", flexWrap: "wrap", justifyContent: "center" }}>
+              <input
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={saveEmailLoading}
                 style={{
-                  flex: 1, padding: "14px 16px", borderRadius: 10, border: `1.5px solid ${B.sage}`,
-                  fontSize: 15, fontFamily: sans, outline: "none", background: B.white,
-                }} />
-              <button type="button" onClick={() => { if (email) setEmailCaptured(true); }} style={{
-                background: B.forest, color: B.white, border: "none", borderRadius: 10,
-                padding: "14px 24px", fontSize: 14, fontWeight: 600, fontFamily: sans, cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}>Save my calendar</button>
+                  flex: "1 1 200px",
+                  padding: "14px 16px",
+                  borderRadius: 10,
+                  border: `1.5px solid ${B.sage}`,
+                  fontSize: 15,
+                  fontFamily: sans,
+                  outline: "none",
+                  background: B.white,
+                }}
+              />
+              <button
+                type="button"
+                onClick={sendCalendarEmail}
+                disabled={saveEmailLoading}
+                style={{
+                  background: B.forest,
+                  color: B.white,
+                  border: "none",
+                  borderRadius: 10,
+                  padding: "14px 24px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  fontFamily: sans,
+                  cursor: saveEmailLoading ? "default" : "pointer",
+                  whiteSpace: "nowrap",
+                  opacity: saveEmailLoading ? 0.7 : 1,
+                }}
+              >
+                {saveEmailLoading ? "Sending…" : "Email my calendar"}
+              </button>
             </div>
+            {saveEmailError && (
+              <p style={{ marginTop: 14, fontSize: 13, color: B.coral, fontWeight: 500 }}>{saveEmailError}</p>
+            )}
           </div>
         </Section>
       )}
-      {step === 3 && emailCaptured && (
+      {step === 3 && saveEmailDone && (
         <Section bg={B.mint}>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
             <p style={{ fontFamily: sans, fontSize: 15, color: B.forest, fontWeight: 500 }}>
-              Saved! We will send regulatory updates to {email}
+              Sent! Check your inbox for <strong>{email.trim()}</strong> — your calendar file is attached.
             </p>
           </div>
         </Section>
