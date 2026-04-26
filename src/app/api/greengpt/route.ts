@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
 return NextResponse.json({ answer: answerText });
 
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch from OpenAI" }, { status: 500 });
   }
 }
