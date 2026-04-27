@@ -2,6 +2,7 @@
 
 import {
   forwardRef,
+  useEffect,
   useState,
   useMemo,
   useRef,
@@ -157,6 +158,11 @@ export default function EHSCalendarLanding() {
   const [calView, setCalView] = useState("grid");
   const [filterCat, setFilterCat] = useState<CategoryKey | null>(null);
   const [email, setEmail] = useState("");
+  const [entitlementStatus, setEntitlementStatus] = useState<"none" | "active" | "past_due" | "trialing" | "canceled">("none");
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [entitlementLoading, setEntitlementLoading] = useState(false);
   const [saveEmailLoading, setSaveEmailLoading] = useState(false);
   const [saveEmailError, setSaveEmailError] = useState<string | null>(null);
   const [saveEmailDone, setSaveEmailDone] = useState(false);
@@ -184,11 +190,60 @@ export default function EHSCalendarLanding() {
     setTimeout(() => toolRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
   };
 
-  const handleUpgrade = () => {
-    // In production: redirect to Stripe checkout
-    // fetch("/api/stripe/checkout", { method: "POST", body: JSON.stringify({ email, priceId: ... }) })
-    setTier("pro");
-    setShowUpgrade(false);
+  const refreshEntitlement = async (targetEmail: string) => {
+    const normalized = targetEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return;
+
+    try {
+      setEntitlementLoading(true);
+      const res = await fetch(`/api/billing/entitlement?email=${encodeURIComponent(normalized)}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Failed to load subscription status.");
+      setTier(data?.tier === "pro" ? "pro" : "free");
+      setEntitlementStatus(data?.status || "none");
+    } catch {
+      setTier("free");
+      setEntitlementStatus("none");
+    } finally {
+      setEntitlementLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return;
+    const timer = setTimeout(() => {
+      void refreshEntitlement(normalized);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [email]);
+
+  const handleUpgrade = async () => {
+    setBillingError(null);
+    const typed = email.trim().toLowerCase();
+    const fallback = window.prompt("Enter your billing email:", typed);
+    const checkoutEmail = (fallback ?? typed).trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(checkoutEmail)) {
+      setBillingError("A valid billing email is required to start checkout.");
+      return;
+    }
+
+    try {
+      setBillingLoading(true);
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: checkoutEmail }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.url) throw new Error(data?.error || "Unable to start checkout.");
+      window.location.href = data.url;
+    } catch (err) {
+      setBillingError(err instanceof Error ? err.message : "Unable to start checkout.");
+    } finally {
+      setBillingLoading(false);
+      setShowUpgrade(false);
+    }
   };
 
   const tryLockedFeature = () => setShowUpgrade(true);
@@ -220,10 +275,57 @@ export default function EHSCalendarLanding() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Failed to send calendar.");
       setSaveEmailDone(true);
+      await refreshEntitlement(trimmed);
     } catch (err) {
       setSaveEmailError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setSaveEmailLoading(false);
+    }
+  };
+
+  const exportCalendar = async () => {
+    setBillingError(null);
+    if (!industry) {
+      setBillingError("Generate your calendar before exporting.");
+      return;
+    }
+    const normalized = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+      setBillingError("Enter your subscription email to export .ics.");
+      return;
+    }
+
+    try {
+      setExportLoading(true);
+      const res = await fetch("/api/ehs-calendar/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: normalized,
+          industry,
+          jurisdictions,
+          flags,
+          employees,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "Export failed.");
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ehs-compliance-calendar-${new Date().getFullYear()}.ics`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setBillingError(err instanceof Error ? err.message : "Export failed.");
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -287,9 +389,14 @@ export default function EHSCalendarLanding() {
               Pro includes 7 state jurisdictions, all 12 facility flags, .ics calendar export, email reminders at 30/60/90 days, and CFR citation links.
             </p>
             <div style={{ display: "flex", gap: 12 }}>
-              <Btn primary onClick={handleUpgrade} style={{ flex: 1, background: B.forest }}>Start Pro — $49/mo</Btn>
+              <Btn primary onClick={handleUpgrade} disabled={billingLoading} style={{ flex: 1, background: B.forest }}>
+                {billingLoading ? "Redirecting..." : "Start Pro — $49/mo"}
+              </Btn>
               <Btn onClick={() => setShowUpgrade(false)}>Maybe later</Btn>
             </div>
+            {billingError && (
+              <p style={{ marginTop: 12, fontSize: 13, color: B.coral, fontWeight: 500 }}>{billingError}</p>
+            )}
           </div>
         </div>
       )}
@@ -513,7 +620,17 @@ export default function EHSCalendarLanding() {
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <Btn small onClick={() => setStep(0)}>← Reconfigure</Btn>
-                      {tier !== "free" && <Btn small primary style={{ background: B.forest }}>📅 Export .ics</Btn>}
+                      {tier !== "free" && (
+                        <Btn
+                          small
+                          primary
+                          onClick={exportCalendar}
+                          disabled={exportLoading}
+                          style={{ background: B.forest }}
+                        >
+                          {exportLoading ? "Exporting..." : "📅 Export .ics"}
+                        </Btn>
+                      )}
                       <div style={{ display: "flex", borderRadius: 8, overflow: "hidden", border: "1.5px solid #E0E0E0" }}>
                         {[["grid","Grid"],["timeline","Timeline"]].map(([v,l]) => (
                           <button type="button" key={v} onClick={() => setCalView(v)} style={{
@@ -661,6 +778,10 @@ export default function EHSCalendarLanding() {
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => {
+                  const normalized = email.trim().toLowerCase();
+                  if (normalized) void refreshEntitlement(normalized);
+                }}
                 disabled={saveEmailLoading}
                 style={{
                   flex: "1 1 200px",
@@ -696,6 +817,19 @@ export default function EHSCalendarLanding() {
             </div>
             {saveEmailError && (
               <p style={{ marginTop: 14, fontSize: 13, color: B.coral, fontWeight: 500 }}>{saveEmailError}</p>
+            )}
+            {tier === "pro" && (
+              <p style={{ marginTop: 8, fontSize: 12, color: B.forest, fontWeight: 500 }}>
+                Pro access confirmed{entitlementStatus !== "none" ? ` (${entitlementStatus})` : ""}.
+              </p>
+            )}
+            {entitlementLoading && (
+              <p style={{ marginTop: 8, fontSize: 12, color: "#666", fontWeight: 400 }}>
+                Checking subscription status...
+              </p>
+            )}
+            {billingError && (
+              <p style={{ marginTop: 8, fontSize: 13, color: B.coral, fontWeight: 500 }}>{billingError}</p>
             )}
           </div>
         </Section>
@@ -736,8 +870,8 @@ export default function EHSCalendarLanding() {
               fontSize: 14,
               fontWeight: 600,
               fontFamily: sans,
-              cursor: p.disabled ? "default" : "pointer",
-              opacity: p.disabled ? 0.5 : 1,
+              cursor: p.disabled || (p.featured && billingLoading) ? "default" : "pointer",
+              opacity: p.disabled || (p.featured && billingLoading) ? 0.5 : 1,
               textAlign: "center",
               textDecoration: "none",
               display: "block",
@@ -778,10 +912,10 @@ export default function EHSCalendarLanding() {
                 <button
                   type="button"
                   onClick={p.featured ? handleUpgrade : undefined}
-                  disabled={p.disabled}
+                  disabled={p.disabled || (p.featured && billingLoading)}
                   style={ctaStyle}
                 >
-                  {p.cta}
+                  {p.featured && billingLoading ? "Redirecting..." : p.cta}
                 </button>
               )}
             </div>
