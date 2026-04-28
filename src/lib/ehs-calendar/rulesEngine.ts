@@ -73,6 +73,10 @@ export const RULES: LandingRule[] = [
   { id: "txsw", name: "TPDES Stormwater Renewal", category: "permit", month: 8, day: 1, description: "Multi-Sector General Permit renewal", citation: "30 TAC §281", frequency: "annual", authority: "TCEQ", industries: ["manufacturing", "construction"], jurisdictions: ["TX"], conditions: ["wastewater"] },
   { id: "nyck", name: "NY Community Right-to-Know", category: "filing", month: 3, day: 1, description: "Chemical reporting under NY RTK", citation: "NY ECL §37", frequency: "annual", authority: "NY DEC", industries: "all", jurisdictions: ["NY"], conditions: ["hazmat_storage"] },
   { id: "nybk", name: "PBS / CBS Registration Renewal", category: "permit", month: 7, day: 1, description: "Petroleum/Chemical Bulk Storage renewal", citation: "6 NYCRR §613", frequency: "annual", authority: "NY DEC", industries: ["manufacturing", "oil_gas", "warehousing"], jurisdictions: ["NY"], conditions: ["hazmat_storage"] },
+  { id: "njrtk", name: "NJ Worker & Community Right-to-Know Survey", category: "filing", month: 4, day: 1, description: "Annual RTK survey filing for covered hazardous substance facilities", citation: "N.J.A.C. 8:59", frequency: "annual", authority: "NJ DEP / NJ DOH", industries: "all", jurisdictions: ["NJ"], conditions: ["hazmat_storage"] },
+  { id: "njdpcc", name: "NJ DPCC / DCR Plan Annual Review", category: "inspection", month: 1, day: 15, description: "Review Discharge Prevention, Containment, and Countermeasure plan and cleanup/removal plan", citation: "N.J.A.C. 7:1E", frequency: "annual", authority: "NJ DEP", industries: ["manufacturing", "oil_gas", "warehousing"], jurisdictions: ["NJ"], conditions: ["hazmat_storage"] },
+  { id: "njair", name: "NJ Air Emission Statement", category: "filing", month: 3, day: 31, description: "Annual emissions statement for facilities with applicable air permits", citation: "N.J.A.C. 7:27-21", frequency: "annual", authority: "NJ DEP", industries: ["manufacturing", "oil_gas"], jurisdictions: ["NJ"], conditions: ["air_permits"] },
+  { id: "njust", name: "NJ Underground Storage Tank Compliance Inspection", category: "inspection", month: 9, day: 1, description: "Annual UST compliance inspection under New Jersey UST rules", citation: "N.J.A.C. 7:14B", frequency: "annual", authority: "NJ DEP", industries: ["manufacturing", "oil_gas", "warehousing"], jurisdictions: ["NJ"], conditions: ["hazmat_storage"] },
 ];
 
 export function genEvents(
@@ -124,7 +128,7 @@ export const VALID_INDUSTRY_IDS = [
   "food_bev",
 ] as const;
 
-export const VALID_JURISDICTION_IDS = ["CA", "TX", "NY", "IL", "PA", "OH", "FL"] as const;
+export const VALID_JURISDICTION_IDS = ["CA", "TX", "NY", "IL", "PA", "OH", "FL", "NJ"] as const;
 
 export const VALID_FLAG_IDS = [
   "hazmat_storage",

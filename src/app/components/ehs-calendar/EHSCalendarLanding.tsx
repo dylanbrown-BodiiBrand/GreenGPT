@@ -54,6 +54,7 @@ const JURISDICTIONS = {
   PA: { label: "Pennsylvania", sub: "DEP" },
   OH: { label: "Ohio", sub: "Ohio EPA · BWC" },
   FL: { label: "Florida", sub: "DEP · OSHA" },
+  NJ: { label: "New Jersey", sub: "DEP · PEOSH" },
 };
 
 const FLAGS = {
@@ -386,7 +387,7 @@ export default function EHSCalendarLanding() {
               Unlock full compliance coverage
             </h3>
             <p style={{ fontSize: 14, color: "#666", fontWeight: 300, lineHeight: 1.6, margin: "0 0 20px" }}>
-              Pro includes 7 state jurisdictions, all 12 facility flags, .ics calendar export, email reminders at 30/60/90 days, and CFR citation links.
+              Pro includes 8 state jurisdictions, all 12 facility flags, .ics calendar export, email reminders at 30/60/90 days, and CFR citation links.
             </p>
             <div style={{ display: "flex", gap: 12 }}>
               <Btn primary onClick={handleUpgrade} disabled={billingLoading} style={{ flex: 1, background: B.forest }}>
@@ -856,7 +857,7 @@ export default function EHSCalendarLanding() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, maxWidth: 820, margin: "0 auto" }}>
           {[
             { tier: "Free", price: "$0", sub: "forever", features: ["Federal rules only", "4 facility hazard flags", "Grid + timeline views", "Category filtering"], cta: "Current plan", disabled: true, bg: B.bone },
-            { tier: "Pro", price: "$49", sub: "/month", features: ["7 state jurisdictions", "All 12 facility flags", ".ics calendar export", "Email reminders (30/60/90 days)", "CFR citation links", "Document attachment"], cta: "Upgrade to Pro", featured: true, bg: B.white },
+            { tier: "Pro", price: "$49", sub: "/month", features: ["8 state jurisdictions", "All 12 facility flags", ".ics calendar export", "Email reminders (30/60/90 days)", "CFR citation links", "Document attachment"], cta: "Upgrade to Pro", featured: true, bg: B.white },
             { tier: "Enterprise", price: "$149", sub: "/month", features: ["Everything in Pro", "Multi-facility dashboard", "Team member access", "Custom rule engine", "Priority support", "Quarterly compliance review call"], cta: "Contact us", bg: B.bone },
           ].map((p, i) => {
             const ctaStyle: CSSProperties = {

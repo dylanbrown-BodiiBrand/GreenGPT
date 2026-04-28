@@ -77,6 +77,7 @@ const JURISDICTIONS = {
   PA: { label: "Pennsylvania", sub: "DEP", tier: "pro" },
   OH: { label: "Ohio", sub: "Ohio EPA · BWC", tier: "pro" },
   FL: { label: "Florida", sub: "DEP · OSHA", tier: "pro" },
+  NJ: { label: "New Jersey", sub: "DEP · PEOSH", tier: "pro" },
 };
 
 const FACILITY_FLAGS = {
@@ -643,7 +644,7 @@ export default function EHSCalendarGenerator({
               Unlock Full Compliance Coverage
             </h3>
             <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 14, color: "#666", fontWeight: 300, lineHeight: 1.6, margin: "0 0 24px" }}>
-              Pro includes state-specific rules (CA, TX, NY, IL, PA, OH, FL), all 12 facility hazard flags, calendar export, email deadline reminders, and document attachment.
+              Pro includes state-specific rules (CA, TX, NY, IL, PA, OH, FL, NJ), all 12 facility hazard flags, calendar export, email deadline reminders, and document attachment.
             </p>
             <div style={{ display: "flex", gap: 12 }}>
               <button
@@ -890,7 +891,7 @@ export default function EHSCalendarGenerator({
                     Unlock state-specific obligations, export, and reminders
                   </h3>
                   <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 300, opacity: 0.7, lineHeight: 1.6, margin: "0 0 20px", maxWidth: 560 }}>
-                    Pro adds 7 state jurisdictions, 8 additional facility flags, .ics calendar export, email reminders at 30/60/90 days, CFR citation links, and document attachment per obligation.
+                    Pro adds 8 state jurisdictions, 8 additional facility flags, .ics calendar export, email reminders at 30/60/90 days, CFR citation links, and document attachment per obligation.
                   </p>
                   <div style={{ display: "flex", gap: 12 }}>
                     <button
