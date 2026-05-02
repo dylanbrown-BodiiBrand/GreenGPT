@@ -219,32 +219,18 @@ export default function EHSCalendarLanding() {
     return () => clearTimeout(timer);
   }, [email]);
 
-  const handleUpgrade = async () => {
+  const handleUpgrade = () => {
     setBillingError(null);
-    const typed = email.trim().toLowerCase();
-    const fallback = window.prompt("Enter your billing email:", typed);
-    const checkoutEmail = (fallback ?? typed).trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(checkoutEmail)) {
-      setBillingError("A valid billing email is required to start checkout.");
+    const raw =
+      (process.env.NEXT_PUBLIC_STRIPE_PRO_PAYMENT_LINK ?? "").trim() ||
+      "https://buy.stripe.com/dRmcN483Lb43ezd4Jx1VK02";
+    if (!/^https:\/\//i.test(raw)) {
+      setBillingError("Checkout link is not configured.");
       return;
     }
-
-    try {
-      setBillingLoading(true);
-      const res = await fetch("/api/billing/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: checkoutEmail }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.url) throw new Error(data?.error || "Unable to start checkout.");
-      window.location.href = data.url;
-    } catch (err) {
-      setBillingError(err instanceof Error ? err.message : "Unable to start checkout.");
-    } finally {
-      setBillingLoading(false);
-      setShowUpgrade(false);
-    }
+    setBillingLoading(true);
+    setShowUpgrade(false);
+    window.location.href = raw;
   };
 
   const tryLockedFeature = () => setShowUpgrade(true);
