@@ -223,7 +223,7 @@ export default function EHSCalendarLanding() {
     setBillingError(null);
     const raw =
       (process.env.NEXT_PUBLIC_STRIPE_PRO_PAYMENT_LINK ?? "").trim() ||
-      "https://buy.stripe.com/dRmcN483Lb43ezd4Jx1VK02";
+      "https://buy.stripe.com/test_bJebJ0es93BB76L3Ft1VK00";
     if (!/^https:\/\//i.test(raw)) {
       setBillingError("Checkout link is not configured.");
       return;
