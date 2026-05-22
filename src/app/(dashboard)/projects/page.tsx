@@ -38,7 +38,8 @@ const CHPE_GALLERY: CarouselImage[] = [
   },
 ];
 
-const SUNZIA_GALLERY: CarouselImage[] = [
+const PROJECT_GALLERY: CarouselImage[] = [
+  ...CHPE_GALLERY,
   {
     src: "/projects/sunzia-hero.png",
     alt: "Outdoor converter cooling bank with ABB equipment at a high-voltage transmission site",
@@ -46,10 +47,6 @@ const SUNZIA_GALLERY: CarouselImage[] = [
   {
     src: "/projects/sunzia-01-mv-panel.png",
     alt: "Technicians in high-visibility gear inspecting an outdoor medium-voltage control panel",
-  },
-  {
-    src: "/projects/sunzia-02-hv-test.png",
-    alt: "High-voltage equipment assembly and testing inside an industrial test facility",
   },
   {
     src: "/projects/sunzia-03-field-work.png",
@@ -85,45 +82,49 @@ export default function ProjectsPage() {
 
         <hr className="border-t border-emerald-200/70" />
 
-        <div className="space-y-16">
+        <div className="space-y-8">
           <h2 className="text-2xl font-semibold text-slate-900">Current Projects</h2>
 
-          <FeaturedProjectSection
-            badge="Current Project"
-            title="Champlain Hudson Power Express (CHPE)"
-            subtitle="Buried HVDC transmission delivering clean hydropower from Québec to the New York metro area."
-            description="Our team supports CHPE through construction and commissioning efforts—coordinating field safety, technical readiness, and stakeholder alignment as converter stations and grid interfaces come online."
-            bullets={[
-              "HVDC buried cable technology with minimal overhead visual impact",
-              "Active commissioning support across converter and station deliverables",
-              "NERC Reliability Standards alignment (O&P and CIP) as operations mature",
-            ]}
-            href="https://chpexpress.com/project-overview/the-technology/"
-            linkLabel="The Technology"
-            imageSrc="/projects/chpe-hero.png"
-            imageAlt="Commissioning team meeting in a field office with Hitachi Energy personnel reviewing site plans"
-            gallery={CHPE_GALLERY}
-            galleryLabel="CHPE"
-            nercServices={CHPE_NERC_SERVICES}
-          />
+          <div className="grid gap-8 lg:grid-cols-2">
+            <FeaturedProjectCard
+              badge="Current Project"
+              title="Champlain Hudson Power Express (CHPE)"
+              subtitle="Buried HVDC transmission delivering clean hydropower from Québec to the New York metro area."
+              description="Our team supports CHPE through construction and commissioning efforts—coordinating field safety, technical readiness, and stakeholder alignment as converter stations and grid interfaces come online."
+              bullets={[
+                "HVDC buried cable technology with minimal overhead visual impact",
+                "Active commissioning support across converter and station deliverables",
+                "NERC Reliability Standards alignment (O&P and CIP) as operations mature",
+              ]}
+              href="https://chpexpress.com/project-overview/the-technology/"
+              linkLabel="The Technology"
+              imageSrc="/projects/chpe-hero.png"
+              imageAlt="Commissioning team meeting in a field office with Hitachi Energy personnel reviewing site plans"
+              nercServices={CHPE_NERC_SERVICES}
+            />
+            <FeaturedProjectCard
+              badge="Current Project"
+              title="SunZia West"
+              subtitle="Arizona segment of the SunZia Wind and Transmission program—among the largest clean energy infrastructure efforts in the U.S."
+              description="We contribute to SunZia West during construction and commissioning of converter, switchyard, and interconnection assets that connect New Mexico wind resources to Western load centers."
+              bullets={[
+                "±525 kV HVDC corridor from central New Mexico to south-central Arizona",
+                "Up to ~3,000 MW of renewable capacity with Western grid interconnection",
+                "NERC compliance planning as the operating entity scales toward commercial operations",
+              ]}
+              href="https://patternenergy.com/projects/sunzia/"
+              linkLabel="SunZia Project Overview"
+              imageSrc="/projects/sunzia-hero.png"
+              imageAlt="Outdoor converter cooling bank with ABB equipment at a high-voltage transmission site"
+            />
+          </div>
 
-          <FeaturedProjectSection
-            badge="Current Project"
-            title="SunZia West"
-            subtitle="Arizona segment of the SunZia Wind and Transmission program—among the largest clean energy infrastructure efforts in the U.S."
-            description="We contribute to SunZia West during construction and commissioning of converter, switchyard, and interconnection assets that connect New Mexico wind resources to Western load centers."
-            bullets={[
-              "±525 kV HVDC corridor from central New Mexico to south-central Arizona",
-              "Up to ~3,000 MW of renewable capacity with Western grid interconnection",
-              "NERC compliance planning as the operating entity scales toward commercial operations",
-            ]}
-            href="https://patternenergy.com/projects/sunzia/"
-            linkLabel="SunZia Project Overview"
-            imageSrc="/projects/sunzia-hero.png"
-            imageAlt="Outdoor converter cooling bank with ABB equipment at a high-voltage transmission site"
-            gallery={SUNZIA_GALLERY}
-            galleryLabel="SunZia West"
-          />
+          <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm sm:p-6">
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+              On-site gallery
+            </h3>
+            <ProjectImageCarousel images={PROJECT_GALLERY} label="Current projects" />
+          </div>
         </div>
 
         <hr className="border-t border-emerald-200/70" />
