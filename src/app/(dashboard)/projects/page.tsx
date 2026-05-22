@@ -212,7 +212,7 @@ export default function ProjectsPage() {
   );
 }
 
-function FeaturedProjectSection({
+function FeaturedProjectCard({
   badge,
   title,
   subtitle,
@@ -222,8 +222,6 @@ function FeaturedProjectSection({
   linkLabel,
   imageSrc,
   imageAlt,
-  gallery,
-  galleryLabel,
   nercServices,
 }: {
   badge?: string;
@@ -235,78 +233,66 @@ function FeaturedProjectSection({
   linkLabel: string;
   imageSrc: string;
   imageAlt: string;
-  gallery: CarouselImage[];
-  galleryLabel: string;
   nercServices?: string[];
 }) {
   return (
-    <article className="space-y-6">
-      <div className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ring-1 ring-transparent transition hover:ring-emerald-200">
-        <div className="relative aspect-[21/9] w-full bg-slate-100 sm:aspect-[2.4/1]">
-          <Image
-            src={imageSrc}
-            alt={imageAlt}
-            fill
-            className="object-cover object-center"
-            sizes="(max-width: 1024px) 100vw, 896px"
-            priority
-          />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/25 via-transparent to-transparent" />
-        </div>
-
-        <div className="space-y-6 p-6 sm:p-8">
-          <header className="space-y-3">
-            {badge ? (
-              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                {badge}
-              </span>
-            ) : null}
-            <h3 className="text-2xl font-semibold leading-tight text-slate-900 sm:text-3xl">{title}</h3>
-            <p className="text-lg leading-relaxed text-slate-700">{subtitle}</p>
-            <p className="leading-relaxed text-slate-600">{description}</p>
-          </header>
-
-          <ul className="space-y-3">
-            {bullets.map((b) => (
-              <li key={b} className="flex items-start gap-3">
-                <CheckIcon />
-                <span className="leading-relaxed text-slate-800">{b}</span>
-              </li>
-            ))}
-          </ul>
-
-          {nercServices ? (
-            <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 sm:p-5">
-              <p className="mb-3 text-sm font-semibold text-slate-900">
-                Potential NERC compliance support (CHPE)
-              </p>
-              <ul className="grid gap-2 sm:grid-cols-2">
-                {nercServices.map((item) => (
-                  <li key={item} className="flex items-start gap-2 text-sm leading-snug text-slate-700">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" aria-hidden />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center rounded-xl border border-emerald-600 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30 focus-visible:ring-offset-2"
-          >
-            {linkLabel}
-          </a>
-        </div>
+    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ring-1 ring-transparent transition hover:ring-emerald-200">
+      <div className="relative aspect-[3/2] w-full bg-slate-100">
+        <Image
+          src={imageSrc}
+          alt={imageAlt}
+          fill
+          className="object-cover object-center"
+          sizes="(max-width: 1024px) 100vw, 50vw"
+          priority
+        />
       </div>
 
-      <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm sm:p-6">
-        <h4 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
-          On-site gallery
-        </h4>
-        <ProjectImageCarousel images={gallery} label={galleryLabel} />
+      <div className="flex flex-1 flex-col p-6 sm:p-8">
+        <header className="mb-5 space-y-2">
+          {badge ? (
+            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+              {badge}
+            </span>
+          ) : null}
+          <h3 className="text-xl font-semibold leading-tight text-slate-900 sm:text-2xl">{title}</h3>
+          <p className="leading-relaxed text-slate-700">{subtitle}</p>
+          <p className="text-sm leading-relaxed text-slate-600">{description}</p>
+        </header>
+
+        <ul className="mb-5 flex-1 space-y-3">
+          {bullets.map((b) => (
+            <li key={b} className="flex items-start gap-3">
+              <CheckIcon />
+              <span className="text-sm leading-relaxed text-slate-800 sm:text-base">{b}</span>
+            </li>
+          ))}
+        </ul>
+
+        {nercServices ? (
+          <div className="mb-5 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3 sm:p-4">
+            <p className="mb-2 text-xs font-semibold text-slate-900 sm:text-sm">
+              Potential NERC compliance support (CHPE)
+            </p>
+            <ul className="space-y-1.5">
+              {nercServices.map((item) => (
+                <li key={item} className="flex items-start gap-2 text-xs leading-snug text-slate-700 sm:text-sm">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" aria-hidden />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-auto inline-flex items-center justify-center rounded-xl border border-emerald-600 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30 focus-visible:ring-offset-2"
+        >
+          {linkLabel}
+        </a>
       </div>
     </article>
   );
