@@ -1,4 +1,5 @@
 // src/app/projects/page.tsx
+import Image from "next/image";
 import PageWrapper from "../../components/PageWrapper";
 
 export default function ProjectsPage() {
@@ -14,16 +15,54 @@ export default function ProjectsPage() {
             </span>
           </h1>
           <p className=" text-lg leading-relaxed text-slate-700">
-            Explore active initiatives and recent engagements. We share deliverables, approach,
-            and outcomes to demonstrate how we drive safety, sustainability, and executive clarity.
+            We are actively supporting major HVDC and renewable transmission initiatives across
+            the U.S. Explore current engagements below, along with how we drive safety,
+            sustainability, and executive clarity on every site.
           </p>
         </div>
 
         <hr className="border-t border-emerald-200/70" />
 
-        {/* Current Project */}
+        {/* Current Projects */}
+        <div className="space-y-8">
+          <h2 className="text-2xl font-semibold text-slate-900">Current Projects</h2>
+          <div className="grid gap-8 lg:grid-cols-2">
+            <FeaturedProjectCard
+              badge="Current Project"
+              title="Champlain Hudson Power Express (CHPE)"
+              subtitle="Buried HVDC transmission delivering clean hydropower from Québec to the New York metro area."
+              bullets={[
+                "HVDC buried cable technology",
+                "Reduced environmental and visual impact vs. overhead lines",
+                "Resilient, time-tested transmission with decades of global HVDC use",
+              ]}
+              href="https://chpexpress.com/project-overview/the-technology/"
+              linkLabel="The Technology"
+              imageSrc="/projects/chpe-hero.png"
+              imageAlt="Single-line diagram of medium-voltage switchgear, distribution transformer, diesel generator, and low-voltage switchgear with automatic transfer"
+            />
+            <FeaturedProjectCard
+              badge="Current Project"
+              title="SunZia West"
+              subtitle="Arizona segment of the SunZia Wind and Transmission program—among the largest clean energy infrastructure efforts in the U.S."
+              bullets={[
+                "±525 kV HVDC corridor from central New Mexico to south-central Arizona",
+                "Up to ~3,000 MW of renewable capacity",
+                "Converter station and grid interconnection on the Western load center side",
+              ]}
+              href="https://patternenergy.com/projects/sunzia/"
+              linkLabel="SunZia Project Overview"
+              imageSrc="/projects/sunzia-hero.png"
+              imageAlt="Outdoor high-voltage converter station with ABB equipment and field technician at a transmission site"
+            />
+          </div>
+        </div>
+
+        <hr className="border-t border-emerald-200/70" />
+
+        {/* HSE Engagement */}
         <ProjectCard
-          badge="Current Project"
+          badge="HSE Engagement"
           title="HSE Consulting Deliverables"
           subtitle="Comprehensive health, safety, and environmental oversight during construction and commissioning."
           sections={[
@@ -103,6 +142,80 @@ export default function ProjectsPage() {
         </section>
       </section>
     </PageWrapper>
+  );
+}
+
+/** Featured project highlight with hero image and external link */
+function FeaturedProjectCard({
+  badge,
+  title,
+  subtitle,
+  bullets,
+  href,
+  linkLabel,
+  imageSrc,
+  imageAlt,
+}: {
+  badge?: string;
+  title: string;
+  subtitle: string;
+  bullets: string[];
+  href: string;
+  linkLabel: string;
+  imageSrc: string;
+  imageAlt: string;
+}) {
+  return (
+    <article className="flex flex-col overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ring-1 ring-transparent transition hover:ring-emerald-200">
+      <div className="relative aspect-[3/2] w-full bg-slate-100">
+        <Image src={imageSrc} alt={imageAlt} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" priority />
+      </div>
+
+      <div className="flex flex-1 flex-col p-6 sm:p-8">
+        <header className="mb-5 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {badge ? (
+              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                {badge}
+              </span>
+            ) : null}
+          </div>
+          <h3 className="text-xl font-semibold leading-tight text-slate-900 sm:text-2xl">{title}</h3>
+          <p className="leading-relaxed text-slate-700">{subtitle}</p>
+        </header>
+
+        <ul className="mb-6 flex-1 space-y-3">
+          {bullets.map((b) => (
+            <li key={b} className="flex items-start gap-3">
+              <svg
+                className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  d="M20 6L9 17l-5-5"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span className="leading-relaxed text-slate-800">{b}</span>
+            </li>
+          ))}
+        </ul>
+
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center rounded-xl border border-emerald-600 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30 focus-visible:ring-offset-2"
+        >
+          {linkLabel}
+        </a>
+      </div>
+    </article>
   );
 }
 
