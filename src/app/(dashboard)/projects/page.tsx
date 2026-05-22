@@ -1,20 +1,82 @@
 // src/app/projects/page.tsx
 import Image from "next/image";
 import PageWrapper from "../../components/PageWrapper";
+import ProjectImageCarousel, { type CarouselImage } from "../../components/ProjectImageCarousel";
+
+const CHPE_GALLERY: CarouselImage[] = [
+  {
+    src: "/projects/chpe-hero.png",
+    alt: "Commissioning team meeting in a field office with Hitachi Energy personnel reviewing site plans",
+  },
+  {
+    src: "/projects/chpe-01-sld.png",
+    alt: "Single-line diagram of station-level MV and LV switchgear, transformer, and diesel generator with ATS",
+  },
+  {
+    src: "/projects/chpe-02-loto-register.png",
+    alt: "Hitachi Energy group lock box register for lockout-tagout coordination on site",
+  },
+  {
+    src: "/projects/chpe-03-lockout.png",
+    alt: "Group lock box secured with danger tags and padlocks during energized equipment lockout",
+  },
+  {
+    src: "/projects/chpe-04-hv-test.png",
+    alt: "High-voltage test hall with HVDC equipment, corona rings, and construction lift",
+  },
+  {
+    src: "/projects/chpe-05-control-cabinet.png",
+    alt: "Technicians working on Hitachi auxiliary control cabinet during commissioning",
+  },
+  {
+    src: "/projects/chpe-06-field-work.png",
+    alt: "Technician in boom lift basket working on outdoor high-voltage bushings at converter station",
+  },
+  {
+    src: "/projects/chpe-07-switchgear.png",
+    alt: "38 kV switchgear and medium-voltage cubicles with line and load side compartments open",
+  },
+];
+
+const SUNZIA_GALLERY: CarouselImage[] = [
+  {
+    src: "/projects/sunzia-hero.png",
+    alt: "Outdoor converter cooling bank with ABB equipment at a high-voltage transmission site",
+  },
+  {
+    src: "/projects/sunzia-01-mv-panel.png",
+    alt: "Technicians in high-visibility gear inspecting an outdoor medium-voltage control panel",
+  },
+  {
+    src: "/projects/sunzia-02-hv-test.png",
+    alt: "High-voltage equipment assembly and testing inside an industrial test facility",
+  },
+  {
+    src: "/projects/sunzia-03-field-work.png",
+    alt: "Aerial lift access for field work on outdoor electrical infrastructure",
+  },
+];
+
+const CHPE_NERC_SERVICES = [
+  "NERC registration strategy and support (initial and ongoing)",
+  "Determination of applicable O&P and CIP Reliability Standards for CHPE's operating model",
+  "Design and implementation of a structured SharePoint-based NERC evidence repository (O&P and CIP), or integration with an existing GRC tool where applicable",
+  "Coordination with NYISO (ISO/RTO) on registration and operational requirements",
+  "Coordination with NPCC (Regional Entity) on registration and compliance expectations",
+  "Foundational program setup and recommendations to build out a sustainable compliance function",
+];
 
 export default function ProjectsPage() {
   return (
-    // Render our own H1 to control alignment & styling
     <PageWrapper title="">
       <section className="mx-auto max-w-5xl space-y-12 text-left">
-        {/* H1 + Intro */}
         <div className="space-y-5">
           <h1 className="text-3xl font-bold leading-tight tracking-tight">
             <span className="bg-gradient-to-r from-emerald-700 to-teal-600 bg-clip-text text-transparent">
               Projects
             </span>
           </h1>
-          <p className=" text-lg leading-relaxed text-slate-700">
+          <p className="text-lg leading-relaxed text-slate-700">
             We are actively supporting major HVDC and renewable transmission initiatives across
             the U.S. Explore current engagements below, along with how we drive safety,
             sustainability, and executive clarity on every site.
@@ -23,44 +85,49 @@ export default function ProjectsPage() {
 
         <hr className="border-t border-emerald-200/70" />
 
-        {/* Current Projects */}
-        <div className="space-y-8">
+        <div className="space-y-16">
           <h2 className="text-2xl font-semibold text-slate-900">Current Projects</h2>
-          <div className="grid gap-8 lg:grid-cols-2">
-            <FeaturedProjectCard
-              badge="Current Project"
-              title="Champlain Hudson Power Express (CHPE)"
-              subtitle="Buried HVDC transmission delivering clean hydropower from Québec to the New York metro area."
-              bullets={[
-                "HVDC buried cable technology",
-                "Reduced environmental and visual impact vs. overhead lines",
-                "Resilient, time-tested transmission with decades of global HVDC use",
-              ]}
-              href="https://chpexpress.com/project-overview/the-technology/"
-              linkLabel="The Technology"
-              imageSrc="/projects/chpe-hero.png"
-              imageAlt="Single-line diagram of medium-voltage switchgear, distribution transformer, diesel generator, and low-voltage switchgear with automatic transfer"
-            />
-            <FeaturedProjectCard
-              badge="Current Project"
-              title="SunZia West"
-              subtitle="Arizona segment of the SunZia Wind and Transmission program—among the largest clean energy infrastructure efforts in the U.S."
-              bullets={[
-                "±525 kV HVDC corridor from central New Mexico to south-central Arizona",
-                "Up to ~3,000 MW of renewable capacity",
-                "Converter station and grid interconnection on the Western load center side",
-              ]}
-              href="https://patternenergy.com/projects/sunzia/"
-              linkLabel="SunZia Project Overview"
-              imageSrc="/projects/sunzia-hero.png"
-              imageAlt="Outdoor high-voltage converter station with ABB equipment and field technician at a transmission site"
-            />
-          </div>
+
+          <FeaturedProjectSection
+            badge="Current Project"
+            title="Champlain Hudson Power Express (CHPE)"
+            subtitle="Buried HVDC transmission delivering clean hydropower from Québec to the New York metro area."
+            description="Our team supports CHPE through construction and commissioning efforts—coordinating field safety, technical readiness, and stakeholder alignment as converter stations and grid interfaces come online."
+            bullets={[
+              "HVDC buried cable technology with minimal overhead visual impact",
+              "Active commissioning support across converter and station deliverables",
+              "NERC Reliability Standards alignment (O&P and CIP) as operations mature",
+            ]}
+            href="https://chpexpress.com/project-overview/the-technology/"
+            linkLabel="The Technology"
+            imageSrc="/projects/chpe-hero.png"
+            imageAlt="Commissioning team meeting in a field office with Hitachi Energy personnel reviewing site plans"
+            gallery={CHPE_GALLERY}
+            galleryLabel="CHPE"
+            nercServices={CHPE_NERC_SERVICES}
+          />
+
+          <FeaturedProjectSection
+            badge="Current Project"
+            title="SunZia West"
+            subtitle="Arizona segment of the SunZia Wind and Transmission program—among the largest clean energy infrastructure efforts in the U.S."
+            description="We contribute to SunZia West during construction and commissioning of converter, switchyard, and interconnection assets that connect New Mexico wind resources to Western load centers."
+            bullets={[
+              "±525 kV HVDC corridor from central New Mexico to south-central Arizona",
+              "Up to ~3,000 MW of renewable capacity with Western grid interconnection",
+              "NERC compliance planning as the operating entity scales toward commercial operations",
+            ]}
+            href="https://patternenergy.com/projects/sunzia/"
+            linkLabel="SunZia Project Overview"
+            imageSrc="/projects/sunzia-hero.png"
+            imageAlt="Outdoor converter cooling bank with ABB equipment at a high-voltage transmission site"
+            gallery={SUNZIA_GALLERY}
+            galleryLabel="SunZia West"
+          />
         </div>
 
         <hr className="border-t border-emerald-200/70" />
 
-        {/* HSE Engagement */}
         <ProjectCard
           badge="HSE Engagement"
           title="HSE Consulting Deliverables"
@@ -124,7 +191,6 @@ export default function ProjectsPage() {
           outcome="A safer site, reduced risk exposure, compliance certainty, and a world-class safety culture that protects people and projects."
         />
 
-        {/* Bottom CTA */}
         <section className="rounded-2xl border border-emerald-200/60 p-6 sm:p-8">
           <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-base sm:text-lg leading-relaxed text-slate-800">
@@ -145,81 +211,120 @@ export default function ProjectsPage() {
   );
 }
 
-/** Featured project highlight with hero image and external link */
-function FeaturedProjectCard({
+function FeaturedProjectSection({
   badge,
   title,
   subtitle,
+  description,
   bullets,
   href,
   linkLabel,
   imageSrc,
   imageAlt,
+  gallery,
+  galleryLabel,
+  nercServices,
 }: {
   badge?: string;
   title: string;
   subtitle: string;
+  description: string;
   bullets: string[];
   href: string;
   linkLabel: string;
   imageSrc: string;
   imageAlt: string;
+  gallery: CarouselImage[];
+  galleryLabel: string;
+  nercServices?: string[];
 }) {
   return (
-    <article className="flex flex-col overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ring-1 ring-transparent transition hover:ring-emerald-200">
-      <div className="relative aspect-[3/2] w-full bg-slate-100">
-        <Image src={imageSrc} alt={imageAlt} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" priority />
-      </div>
+    <article className="space-y-6">
+      <div className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ring-1 ring-transparent transition hover:ring-emerald-200">
+        <div className="relative aspect-[21/9] w-full bg-slate-100 sm:aspect-[2.4/1]">
+          <Image
+            src={imageSrc}
+            alt={imageAlt}
+            fill
+            className="object-cover object-center"
+            sizes="(max-width: 1024px) 100vw, 896px"
+            priority
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/25 via-transparent to-transparent" />
+        </div>
 
-      <div className="flex flex-1 flex-col p-6 sm:p-8">
-        <header className="mb-5 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="space-y-6 p-6 sm:p-8">
+          <header className="space-y-3">
             {badge ? (
               <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
                 {badge}
               </span>
             ) : null}
-          </div>
-          <h3 className="text-xl font-semibold leading-tight text-slate-900 sm:text-2xl">{title}</h3>
-          <p className="leading-relaxed text-slate-700">{subtitle}</p>
-        </header>
+            <h3 className="text-2xl font-semibold leading-tight text-slate-900 sm:text-3xl">{title}</h3>
+            <p className="text-lg leading-relaxed text-slate-700">{subtitle}</p>
+            <p className="leading-relaxed text-slate-600">{description}</p>
+          </header>
 
-        <ul className="mb-6 flex-1 space-y-3">
-          {bullets.map((b) => (
-            <li key={b} className="flex items-start gap-3">
-              <svg
-                className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  d="M20 6L9 17l-5-5"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span className="leading-relaxed text-slate-800">{b}</span>
-            </li>
-          ))}
-        </ul>
+          <ul className="space-y-3">
+            {bullets.map((b) => (
+              <li key={b} className="flex items-start gap-3">
+                <CheckIcon />
+                <span className="leading-relaxed text-slate-800">{b}</span>
+              </li>
+            ))}
+          </ul>
 
-        <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center justify-center rounded-xl border border-emerald-600 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30 focus-visible:ring-offset-2"
-        >
-          {linkLabel}
-        </a>
+          {nercServices ? (
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 sm:p-5">
+              <p className="mb-3 text-sm font-semibold text-slate-900">
+                Potential NERC compliance support (CHPE)
+              </p>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {nercServices.map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-sm leading-snug text-slate-700">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" aria-hidden />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center rounded-xl border border-emerald-600 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30 focus-visible:ring-offset-2"
+          >
+            {linkLabel}
+          </a>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm sm:p-6">
+        <h4 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+          On-site gallery
+        </h4>
+        <ProjectImageCarousel images={gallery} label={galleryLabel} />
       </div>
     </article>
   );
 }
 
-/** Reusable Project card (emerald theme) */
+function CheckIcon() {
+  return (
+    <svg
+      className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M20 6L9 17l-5-5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function ProjectCard({
   badge,
   title,
@@ -244,9 +349,7 @@ function ProjectCard({
           ) : null}
         </div>
         <h2 className="text-2xl sm:text-3xl font-semibold leading-tight text-slate-900">{title}</h2>
-        {subtitle ? (
-          <p className=" leading-relaxed text-slate-700">{subtitle}</p>
-        ) : null}
+        {subtitle ? <p className="leading-relaxed text-slate-700">{subtitle}</p> : null}
       </header>
 
       <div className="space-y-8">
@@ -261,21 +364,7 @@ function ProjectCard({
             <ul className="grid gap-3 sm:grid-cols-2">
               {bullets.map((b) => (
                 <li key={b} className="flex items-start gap-3">
-                  {/* Emerald check icon */}
-                  <svg
-                    className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M20 6L9 17l-5-5"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <CheckIcon />
                   <span className="leading-relaxed text-slate-800">{b}</span>
                 </li>
               ))}
