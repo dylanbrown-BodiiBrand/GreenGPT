@@ -38,6 +38,18 @@ const CHPE_GALLERY: GalleryImage[] = [
     src: "/projects/chpe-07-switchgear.png",
     alt: "38 kV switchgear and medium-voltage cubicles with line and load side compartments open",
   },
+  {
+    src: "/projects/chpe-08-valve-hall.png",
+    alt: "HVDC converter valve hall with valve towers, insulators, and overhead electrical infrastructure",
+  },
+  {
+    src: "/projects/chpe-09-commissioning.png",
+    alt: "Technician in arc-rated PPE performing commissioning work on indoor electrical switchgear",
+  },
+  {
+    src: "/projects/chpe-10-abb-switchgear.png",
+    alt: "ABB switchgear and control panels with overhead cable trays in a converter station control room",
+  },
 ];
 
 const SUNZIA_GALLERY: GalleryImage[] = [
