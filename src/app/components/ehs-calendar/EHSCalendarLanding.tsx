@@ -10,6 +10,8 @@ import {
   type CSSProperties,
 } from "react";
 import Link from "next/link";
+import DocumentUploader from "@/app/components/DocumentUploader";
+import { type BillingTier, hasProAccess, isEnterpriseTier } from "@/lib/billing/tier";
 import {
   CATEGORIES,
   RULES,
@@ -17,6 +19,8 @@ import {
   type CategoryKey,
   type LandingEvent,
 } from "@/lib/ehs-calendar/rulesEngine";
+
+const EHS_EMAIL_KEY = "ehs_calendar_email";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE GREEN EXECUTIVE BRIEFING — EHS COMPLIANCE CALENDAR
@@ -150,7 +154,9 @@ const ProBadge = () => (
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function EHSCalendarLanding() {
-  const [tier, setTier] = useState<"free" | "pro">("free");
+  const [tier, setTier] = useState<BillingTier>("free");
+  const proAccess = hasProAccess(tier);
+  const enterpriseAccess = isEnterpriseTier(tier);
   const [step, setStep] = useState(-1);
   const [industry, setIndustry] = useState<string | null>(null);
   const [jurisdictions, setJurisdictions] = useState<string[]>([]);
@@ -200,7 +206,10 @@ export default function EHSCalendarLanding() {
       const res = await fetch(`/api/billing/entitlement?email=${encodeURIComponent(normalized)}`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Failed to load subscription status.");
-      setTier(data?.tier === "pro" ? "pro" : "free");
+      const t = data?.tier;
+      if (t === "enterprise") setTier("enterprise");
+      else if (t === "pro") setTier("pro");
+      else setTier("free");
       setEntitlementStatus(data?.status || "none");
     } catch {
       setTier("free");
@@ -215,22 +224,71 @@ export default function EHSCalendarLanding() {
     if (!normalized) return;
     const timer = setTimeout(() => {
       void refreshEntitlement(normalized);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(EHS_EMAIL_KEY, normalized);
+      }
     }, 400);
     return () => clearTimeout(timer);
   }, [email]);
 
-  const handleUpgrade = () => {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(EHS_EMAIL_KEY);
+    if (stored && !email.trim()) setEmail(stored);
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("billing") !== "success") return;
+
+    const target = (email.trim() || stored || "").toLowerCase();
+    if (target) {
+      void refreshEntitlement(target);
+      setEmail(target);
+    }
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [email]);
+
+  const syncReminders = async (targetEmail: string) => {
+    if (!industry || !proAccess) return;
+    await fetch("/api/ehs-calendar/sync-reminders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: targetEmail,
+        industry,
+        jurisdictions,
+        flags,
+        employees,
+      }),
+    });
+  };
+
+  const handleUpgrade = async () => {
     setBillingError(null);
-    const raw =
-      (process.env.NEXT_PUBLIC_STRIPE_PRO_PAYMENT_LINK ?? "").trim() ||
-      "https://buy.stripe.com/test_bJebJ0es93BB76L3Ft1VK00";
-    if (!/^https:\/\//i.test(raw)) {
-      setBillingError("Checkout link is not configured.");
+    const trimmed = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setBillingError("Enter your email before upgrading to Pro.");
       return;
     }
-    setBillingLoading(true);
-    setShowUpgrade(false);
-    window.location.href = raw;
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(EHS_EMAIL_KEY, trimmed);
+    }
+    try {
+      setBillingLoading(true);
+      setShowUpgrade(false);
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Unable to start checkout.");
+      if (!data?.url) throw new Error("Checkout URL missing.");
+      window.location.href = data.url;
+    } catch (err) {
+      setBillingError(err instanceof Error ? err.message : "Checkout failed.");
+    } finally {
+      setBillingLoading(false);
+    }
   };
 
   const tryLockedFeature = () => setShowUpgrade(true);
@@ -244,6 +302,11 @@ export default function EHSCalendarLanding() {
     }
     if (!industry) {
       setSaveEmailError("Generate your calendar first, then save.");
+      return;
+    }
+    if (!proAccess) {
+      setSaveEmailError("Pro subscription required to email your calendar.");
+      tryLockedFeature();
       return;
     }
     try {
@@ -263,6 +326,7 @@ export default function EHSCalendarLanding() {
       if (!res.ok) throw new Error(data?.error || "Failed to send calendar.");
       setSaveEmailDone(true);
       await refreshEntitlement(trimmed);
+      await syncReminders(trimmed);
     } catch (err) {
       setSaveEmailError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -309,12 +373,20 @@ export default function EHSCalendarLanding() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
+      await syncReminders(normalized);
     } catch (err) {
       setBillingError(err instanceof Error ? err.message : "Export failed.");
     } finally {
       setExportLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (step === 3 && proAccess && email.trim() && industry) {
+      void syncReminders(email.trim().toLowerCase());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when calendar is generated for Pro users
+  }, [step, proAccess, email, industry, jurisdictions, flags, employees]);
 
   const onSubmitContact = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -486,14 +558,14 @@ export default function EHSCalendarLanding() {
                   <h2 style={{ fontFamily: serif, fontSize: 26, color: B.forest, margin: "0 0 6px" }}>Jurisdiction & workforce</h2>
                   <p style={{ fontSize: 14, color: "#888", fontWeight: 300, margin: "0 0 24px" }}>
                     Federal rules are always included. State programs add additional obligations.
-                    {tier === "free" && <span style={{ color: B.gold, fontWeight: 500 }}> State rules require Pro.</span>}
+                    {!proAccess && <span style={{ color: B.gold, fontWeight: 500 }}> State rules require Pro.</span>}
                   </p>
                   <div style={{ fontFamily: mono, fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: "#999", marginBottom: 12 }}>
-                    State jurisdictions {tier === "free" && <ProBadge />}
+                    State jurisdictions {!proAccess && <ProBadge />}
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginBottom: 28 }}>
                     {Object.entries(JURISDICTIONS).map(([k, v]) => {
-                      const locked = tier === "free";
+                      const locked = !proAccess;
                       const on = jurisdictions.includes(k);
                       return (
                         <div key={k} style={{ position: "relative" }}>
@@ -546,7 +618,7 @@ export default function EHSCalendarLanding() {
                   <p style={{ fontSize: 14, color: "#888", fontWeight: 300, margin: "0 0 24px" }}>Each flag activates specific regulatory obligations. Free tier includes 4 core flags.</p>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginBottom: 28 }}>
                     {Object.entries(FLAGS).map(([k, d]) => {
-                      const locked = !d.free && tier === "free";
+                      const locked = !d.free && !proAccess;
                       const on = flags.includes(k);
                       return (
                         <div key={k} style={{ position: "relative" }}>
@@ -607,7 +679,7 @@ export default function EHSCalendarLanding() {
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <Btn small onClick={() => setStep(0)}>← Reconfigure</Btn>
-                      {tier !== "free" && (
+                      {proAccess && (
                         <Btn
                           small
                           primary
@@ -723,6 +795,13 @@ export default function EHSCalendarLanding() {
                                     <span style={{ fontFamily: mono, fontSize: 9, padding: "2px 7px", borderRadius: 4, background: "#F3F4F6", color: "#666" }}>{e.authority}</span>
                                     {e.citation && <span style={{ fontFamily: mono, fontSize: 9, padding: "2px 7px", borderRadius: 4, background: "#F3F4F6", color: "#999" }}>{e.citation}</span>}
                                   </div>
+                                  {proAccess && email.trim() && (
+                                    <DocumentUploader
+                                      email={email}
+                                      obligationId={e.id ?? `ev-${e.name}-${e.eM}-${e.eD}`}
+                                      obligationName={e.name}
+                                    />
+                                  )}
                                 </div>
                               </div>
                             ))}
@@ -805,9 +884,10 @@ export default function EHSCalendarLanding() {
             {saveEmailError && (
               <p style={{ marginTop: 14, fontSize: 13, color: B.coral, fontWeight: 500 }}>{saveEmailError}</p>
             )}
-            {tier === "pro" && (
+            {proAccess && (
               <p style={{ marginTop: 8, fontSize: 12, color: B.forest, fontWeight: 500 }}>
-                Pro access confirmed{entitlementStatus !== "none" ? ` (${entitlementStatus})` : ""}.
+                {enterpriseAccess ? "Enterprise" : "Pro"} access confirmed
+                {entitlementStatus !== "none" ? ` (${entitlementStatus})` : ""}.
               </p>
             )}
             {entitlementLoading && (
@@ -844,7 +924,7 @@ export default function EHSCalendarLanding() {
           {[
             { tier: "Free", price: "$0", sub: "forever", features: ["Federal rules only", "4 facility hazard flags", "Grid + timeline views", "Category filtering"], cta: "Current plan", disabled: true, bg: B.bone },
             { tier: "Pro", price: "$49", sub: "/month", features: ["8 state jurisdictions", "All 12 facility flags", ".ics calendar export", "Email reminders (30/60/90 days)", "CFR citation links", "Document attachment"], cta: "Upgrade to Pro", featured: true, bg: B.white },
-            { tier: "Enterprise", price: "$149", sub: "/month", features: ["Everything in Pro", "Multi-facility dashboard", "Team member access", "Custom rule engine", "Priority support", "Quarterly compliance review call"], cta: "Contact us", bg: B.bone },
+            { tier: "Enterprise", price: "$149", sub: "/month", features: ["Everything in Pro", "Multi-facility dashboard (coming soon)", "Team member access", "Custom rule engine", "Priority support", "Quarterly compliance review call"], cta: enterpriseAccess ? "Current plan" : "Contact us", disabled: enterpriseAccess, bg: B.bone },
           ].map((p, i) => {
             const ctaStyle: CSSProperties = {
               marginTop: 20,
@@ -891,10 +971,14 @@ export default function EHSCalendarLanding() {
                   </div>
                 ))}
               </div>
-              {i === 2 ? (
+              {i === 2 && !p.disabled ? (
                 <Link href="/contact" style={ctaStyle}>
                   {p.cta}
                 </Link>
+              ) : i === 2 && p.disabled ? (
+                <button type="button" disabled style={ctaStyle}>
+                  {p.cta}
+                </button>
               ) : (
                 <button
                   type="button"

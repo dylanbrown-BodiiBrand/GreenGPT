@@ -586,11 +586,6 @@ export default function EHSCalendarGenerator({
   const [filterCat, setFilterCat] = useState<CategoryKey | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
 
-  const startProLocal = useCallback(() => {
-    setTier("pro");
-    setShowUpgrade(false);
-  }, []);
-
   const startProOrCheckout = useCallback(() => {
     if (onUpgrade) {
       const email =
@@ -599,22 +594,24 @@ export default function EHSCalendarGenerator({
           : null;
       if (email) onUpgrade(email.trim());
     } else {
-      startProLocal();
+      setShowUpgrade(true);
     }
-  }, [onUpgrade, startProLocal]);
+  }, [onUpgrade]);
 
   const tierConfig = TIERS[tier];
 
+  const hasPro = tier === "pro" || tier === "enterprise";
+
   const toggleJ = useCallback((j: string) => {
-    if (tier === "free") { setShowUpgrade(true); return; }
+    if (!hasPro) { setShowUpgrade(true); return; }
     setJurisdictions(p => p.includes(j) ? p.filter(x => x !== j) : [...p, j]);
-  }, [tier]);
+  }, [hasPro]);
 
   const toggleF = useCallback((f: keyof typeof FACILITY_FLAGS) => {
     const flagData = FACILITY_FLAGS[f];
-    if (flagData.tier === "pro" && tier === "free") { setShowUpgrade(true); return; }
+    if (flagData.tier === "pro" && !hasPro) { setShowUpgrade(true); return; }
     setFlags(p => p.includes(f) ? p.filter(x => x !== f) : [...p, f]);
-  }, [tier]);
+  }, [hasPro]);
 
   const events = useMemo(() => {
     if (!industry) return [];

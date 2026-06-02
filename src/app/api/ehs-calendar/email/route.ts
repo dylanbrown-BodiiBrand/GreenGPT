@@ -8,6 +8,8 @@ import {
 } from "@/lib/ehs-calendar/rulesEngine";
 import { buildEhsCalendarIcs } from "@/lib/ehs-calendar/buildIcs";
 import { isValidEmail, parseEhsProfile } from "@/lib/ehs-calendar/profile";
+import { requireProEmail } from "@/lib/billing/entitlementServer";
+import { eventsToReminderRows } from "@/lib/ehs-calendar/deadlineDates";
 import { getSupabase } from "@/lib/server/supabase";
 
 export async function POST(req: NextRequest) {
@@ -30,6 +32,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid email.", requestId }, { status: 400 });
     }
 
+    if (!supabase) {
+      return NextResponse.json({ error: "Database is not configured.", requestId }, { status: 503 });
+    }
+
+    await requireProEmail(supabase, email);
+
     const parsed = parseEhsProfile(body);
     if (!parsed.profile) {
       return NextResponse.json({ error: parsed.error ?? "Invalid profile.", requestId }, { status: 400 });
@@ -44,6 +52,20 @@ export async function POST(req: NextRequest) {
     );
     const year = new Date().getFullYear();
     const ics = buildEhsCalendarIcs(events, year);
+
+    const reminderRows = eventsToReminderRows(events, year, email);
+    for (const row of reminderRows) {
+      const { data: existing } = await supabase
+        .from("deadline_reminders")
+        .select("id")
+        .eq("user_email", row.user_email)
+        .eq("obligation_id", row.obligation_id)
+        .eq("deadline_date", row.deadline_date)
+        .maybeSingle();
+      if (!existing?.id) {
+        await supabase.from("deadline_reminders").insert(row);
+      }
+    }
 
     const resend = new Resend(apiKey);
     const sendPromise = resend.emails.send({
@@ -98,7 +120,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, requestId });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Bad request.";
-    const status = errorMessage.includes("timeout") ? 504 : 400;
+    let status = 400;
+    if (errorMessage.includes("timeout")) status = 504;
+    if (
+      error instanceof Error &&
+      "statusCode" in error &&
+      (error as Error & { statusCode: number }).statusCode === 403
+    ) {
+      status = 403;
+    }
     return NextResponse.json({ error: errorMessage, requestId }, { status });
   }
 }

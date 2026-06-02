@@ -5,6 +5,7 @@ import { POST as checkoutPost } from "../../billing/checkout/route";
 import { POST as exportPost } from "../export/route";
 import { POST as emailPost } from "../email/route";
 import { GET as entitlementGet } from "../../billing/entitlement/route";
+import { GET as remindersGet } from "../../reminders/send/route";
 
 describe("route contracts", () => {
   it("returns 400 for entitlement without valid email", async () => {
@@ -33,6 +34,12 @@ describe("route contracts", () => {
     });
     const res = await exportPost(req);
     expect([400, 503]).toContain(res.status);
+  });
+
+  it("returns 401 for reminders without cron secret", async () => {
+    const req = new NextRequest("http://localhost/api/reminders/send", { method: "GET" });
+    const res = await remindersGet(req);
+    expect(res.status).toBe(401);
   });
 
   it("returns 503 for email when resend env is missing", async () => {

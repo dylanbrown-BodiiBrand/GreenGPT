@@ -1,11 +1,10 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { buildEhsCalendarIcs } from "@/lib/ehs-calendar/buildIcs";
-import { parseEhsProfile, isValidEmail } from "@/lib/ehs-calendar/profile";
-import { RULES, genEvents } from "@/lib/ehs-calendar/rulesEngine";
 import { requireProEmail } from "@/lib/billing/entitlementServer";
 import { eventsToReminderRows } from "@/lib/ehs-calendar/deadlineDates";
+import { isValidEmail, parseEhsProfile } from "@/lib/ehs-calendar/profile";
+import { RULES, genEvents } from "@/lib/ehs-calendar/rulesEngine";
 import { getSupabase } from "@/lib/server/supabase";
 
 export async function POST(req: NextRequest) {
@@ -19,7 +18,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
     if (!isValidEmail(email)) {
-      return NextResponse.json({ error: "Valid email is required for export.", requestId }, { status: 400 });
+      return NextResponse.json({ error: "Valid email is required.", requestId }, { status: 400 });
     }
 
     await requireProEmail(supabase, email);
@@ -37,10 +36,10 @@ export async function POST(req: NextRequest) {
       parsed.profile.flags,
       parsed.profile.employees
     );
-    const ics = buildEhsCalendarIcs(events, year);
+    const rows = eventsToReminderRows(events, year, email);
 
-    const reminderRows = eventsToReminderRows(events, year, email);
-    for (const row of reminderRows) {
+    let synced = 0;
+    for (const row of rows) {
       const { data: existing } = await supabase
         .from("deadline_reminders")
         .select("id")
@@ -48,20 +47,25 @@ export async function POST(req: NextRequest) {
         .eq("obligation_id", row.obligation_id)
         .eq("deadline_date", row.deadline_date)
         .maybeSingle();
-      if (!existing?.id) {
-        await supabase.from("deadline_reminders").insert(row);
+
+      if (existing?.id) {
+        const { error: updateErr } = await supabase
+          .from("deadline_reminders")
+          .update({ obligation_name: row.obligation_name })
+          .eq("id", existing.id);
+        if (updateErr) {
+          return NextResponse.json({ error: updateErr.message, requestId }, { status: 500 });
+        }
+      } else {
+        const { error: insertErr } = await supabase.from("deadline_reminders").insert(row);
+        if (insertErr) {
+          return NextResponse.json({ error: insertErr.message, requestId }, { status: 500 });
+        }
+        synced += 1;
       }
     }
 
-    console.info(`[ehs.export] requestId=${requestId} email=${email} events=${events.length}`);
-
-    return new NextResponse(ics, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/calendar; charset=utf-8",
-        "Content-Disposition": `attachment; filename="ehs-compliance-calendar-${year}.ics"`,
-      },
-    });
+    return NextResponse.json({ ok: true, synced, requestId });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Bad request.";
     const status =

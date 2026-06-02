@@ -3,10 +3,21 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe } from "@/lib/billing/stripe";
+import type { BillingTier } from "@/lib/billing/tier";
 import { getSupabase } from "@/lib/server/supabase";
 
-function subscriptionStatusToTier(status: Stripe.Subscription.Status): "free" | "pro" {
-  return status === "active" || status === "trialing" || status === "past_due" ? "pro" : "free";
+function priceIdToTier(priceId: string | undefined): BillingTier {
+  const enterprisePrice = process.env.STRIPE_ENTERPRISE_PRICE_ID;
+  if (enterprisePrice && priceId === enterprisePrice) return "enterprise";
+  return "pro";
+}
+
+function subscriptionStatusToTier(
+  status: Stripe.Subscription.Status,
+  priceId?: string
+): BillingTier {
+  if (status !== "active" && status !== "trialing" && status !== "past_due") return "free";
+  return priceIdToTier(priceId);
 }
 
 export async function POST(req: NextRequest) {
@@ -37,6 +48,7 @@ export async function POST(req: NextRequest) {
       let stripeSubscriptionId: string | null = null;
       let stripeCustomerId: string | null = null;
       let status: Stripe.Subscription.Status | null = null;
+      let priceId: string | undefined;
 
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as Stripe.Checkout.Session;
@@ -46,12 +58,14 @@ export async function POST(req: NextRequest) {
         if (stripeSubscriptionId) {
           const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
           status = subscription.status;
+          priceId = subscription.items.data[0]?.price?.id;
         }
       } else {
         const subscription = event.data.object as Stripe.Subscription;
         stripeSubscriptionId = subscription.id;
         stripeCustomerId = typeof subscription.customer === "string" ? subscription.customer : null;
         status = subscription.status;
+        priceId = subscription.items.data[0]?.price?.id;
 
         if (stripeCustomerId) {
           const customer = await stripe.customers.retrieve(stripeCustomerId);
@@ -62,7 +76,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (email && status) {
-        const tier = subscriptionStatusToTier(status);
+        const tier = subscriptionStatusToTier(status, priceId);
         const { error } = await supabase.from("subscriptions").upsert(
           {
             customer_email: email,
