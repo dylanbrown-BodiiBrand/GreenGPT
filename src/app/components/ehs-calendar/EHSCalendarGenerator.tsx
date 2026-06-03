@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, type ReactNode } from "react";
+import { PRO_PRICE_MO } from "@/lib/ehs-calendar/pricing";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE GREEN EXECUTIVE BRIEFING — EHS COMPLIANCE CALENDAR GENERATOR
@@ -21,7 +22,7 @@ const TIERS = {
   },
   pro: {
     label: "Pro",
-    price: "$49/mo",
+    price: PRO_PRICE_MO,
     maxJurisdictions: 99,
     canExport: true,
     canFilter: true,
@@ -654,7 +655,7 @@ export default function EHSCalendarGenerator({
                 fontFamily: "'Outfit', sans-serif", cursor: upgradeLoading ? "wait" : "pointer",
                 opacity: upgradeLoading ? 0.85 : 1,
               }}>
-                {upgradeLoading ? "Redirecting to checkout..." : "Start Pro — $49/mo"}
+                {upgradeLoading ? "Redirecting to checkout..." : `Start Pro — ${PRO_PRICE_MO}`}
               </button>
               <button onClick={() => setShowUpgrade(false)} style={{
                 background: "transparent", color: BRAND.slate, border: `1.5px solid #DDD`,
@@ -703,7 +704,7 @@ export default function EHSCalendarGenerator({
           }}>
             <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: tier === "free" ? BRAND.sage : BRAND.charcoal, marginBottom: 2 }}>{tierConfig.label}</span>
             {tier === "free" && <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, opacity: 0.6 }}>Federal Only</span>}
-            {tier === "pro" && <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, color: BRAND.charcoal, fontWeight: 600 }}>$49/mo</span>}
+            {tier === "pro" && <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, color: BRAND.charcoal, fontWeight: 600 }}>{PRO_PRICE_MO}</span>}
             {tier === "enterprise" && <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, color: BRAND.charcoal, fontWeight: 600 }}>$149/mo</span>}
           </div>
         </div>
@@ -899,7 +900,7 @@ export default function EHSCalendarGenerator({
                       background: BRAND.emerald, color: BRAND.charcoal, border: "none",
                       borderRadius: 10, padding: "13px 28px", fontSize: 14, fontWeight: 700,
                       fontFamily: "'Outfit', sans-serif", cursor: upgradeLoading ? "wait" : "pointer",
-                    }}>{upgradeLoading ? "Redirecting..." : "Upgrade to Pro — $49/mo"}</button>
+                    }}>{upgradeLoading ? "Redirecting..." : `Upgrade to Pro — ${PRO_PRICE_MO}`}</button>
                     <button style={{
                       background: "rgba(255,255,255,0.1)", color: BRAND.white,
                       border: "1.5px solid rgba(255,255,255,0.2)", borderRadius: 10,

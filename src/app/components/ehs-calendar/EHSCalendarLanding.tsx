@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import DocumentUploader from "@/app/components/DocumentUploader";
 import { type BillingTier, hasProAccess, isEnterpriseTier } from "@/lib/billing/tier";
+import { PRO_PRICE, PRO_PRICE_MO } from "@/lib/ehs-calendar/pricing";
 import {
   CATEGORIES,
   RULES,
@@ -449,7 +450,7 @@ export default function EHSCalendarLanding() {
             </p>
             <div style={{ display: "flex", gap: 12 }}>
               <Btn primary onClick={handleUpgrade} disabled={billingLoading} style={{ flex: 1, background: B.forest }}>
-                {billingLoading ? "Redirecting..." : "Start Pro — $49/mo"}
+                {billingLoading ? "Redirecting..." : `Start Pro — ${PRO_PRICE_MO}`}
               </Btn>
               <Btn onClick={() => setShowUpgrade(false)}>Maybe later</Btn>
             </div>
@@ -923,7 +924,7 @@ export default function EHSCalendarLanding() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, maxWidth: 820, margin: "0 auto" }}>
           {[
             { tier: "Free", price: "$0", sub: "forever", features: ["Federal rules only", "4 facility hazard flags", "Grid + timeline views", "Category filtering"], cta: "Current plan", disabled: true, bg: B.bone },
-            { tier: "Pro", price: "$49", sub: "/month", features: ["8 state jurisdictions", "All 12 facility flags", ".ics calendar export", "Email reminders (30/60/90 days)", "CFR citation links", "Document attachment"], cta: "Upgrade to Pro", featured: true, bg: B.white },
+            { tier: "Pro", price: PRO_PRICE, sub: "/month", features: ["8 state jurisdictions", "All 12 facility flags", ".ics calendar export", "Email reminders (30/60/90 days)", "CFR citation links", "Document attachment"], cta: "Upgrade to Pro", featured: true, bg: B.white },
             { tier: "Enterprise", price: "$149", sub: "/month", features: ["Everything in Pro", "Multi-facility dashboard (coming soon)", "Team member access", "Custom rule engine", "Priority support", "Quarterly compliance review call"], cta: enterpriseAccess ? "Current plan" : "Contact us", disabled: enterpriseAccess, bg: B.bone },
           ].map((p, i) => {
             const ctaStyle: CSSProperties = {
