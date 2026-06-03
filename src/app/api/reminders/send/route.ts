@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { hasProAccess } from "@/lib/billing/tier";
-import { getSupabase } from "@/lib/server/supabase";
+import { getSupabaseAdmin } from "@/lib/server/supabase";
 
 const BUCKET_DAYS = [30, 60, 90] as const;
 type Bucket = (typeof BUCKET_DAYS)[number];
@@ -37,7 +37,7 @@ async function runReminderJob(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized.", requestId }, { status: 401 });
   }
 
-  const supabase = getSupabase();
+  const supabase = getSupabaseAdmin();
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM;
   if (!supabase || !apiKey || !from) {

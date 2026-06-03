@@ -5,11 +5,11 @@ import { requireProEmail } from "@/lib/billing/entitlementServer";
 import { eventsToReminderRows } from "@/lib/ehs-calendar/deadlineDates";
 import { isValidEmail, parseEhsProfile } from "@/lib/ehs-calendar/profile";
 import { RULES, genEvents } from "@/lib/ehs-calendar/rulesEngine";
-import { getSupabase } from "@/lib/server/supabase";
+import { getSupabaseAdmin } from "@/lib/server/supabase";
 
 export async function POST(req: NextRequest) {
   const requestId = crypto.randomUUID();
-  const supabase = getSupabase();
+  const supabase = getSupabaseAdmin();
   if (!supabase) {
     return NextResponse.json({ error: "Database is not configured.", requestId }, { status: 503 });
   }

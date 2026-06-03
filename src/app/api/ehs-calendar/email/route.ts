@@ -10,10 +10,10 @@ import { buildEhsCalendarIcs } from "@/lib/ehs-calendar/buildIcs";
 import { isValidEmail, parseEhsProfile } from "@/lib/ehs-calendar/profile";
 import { requireProEmail } from "@/lib/billing/entitlementServer";
 import { eventsToReminderRows } from "@/lib/ehs-calendar/deadlineDates";
-import { getSupabase } from "@/lib/server/supabase";
+import { getSupabaseAdmin } from "@/lib/server/supabase";
 
 export async function POST(req: NextRequest) {
-  const supabase = getSupabase();
+  const supabase = getSupabaseAdmin();
   const requestId = crypto.randomUUID();
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM;

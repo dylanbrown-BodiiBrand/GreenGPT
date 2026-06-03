@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe } from "@/lib/billing/stripe";
 import type { BillingTier } from "@/lib/billing/tier";
-import { getSupabase } from "@/lib/server/supabase";
+import { getSupabaseAdmin } from "@/lib/server/supabase";
 
 function priceIdToTier(priceId: string | undefined): BillingTier {
   const enterprisePrice = process.env.STRIPE_ENTERPRISE_PRICE_ID;
@@ -21,7 +21,7 @@ function subscriptionStatusToTier(
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = getSupabase();
+  const supabase = getSupabaseAdmin();
   if (!supabase) {
     return NextResponse.json({ error: "Database is not configured." }, { status: 503 });
   }
