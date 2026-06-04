@@ -170,6 +170,7 @@ export default function EHSCalendarLanding() {
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
   const [exportLoading, setExportLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
   const [entitlementLoading, setEntitlementLoading] = useState(false);
   const [saveEmailLoading, setSaveEmailLoading] = useState(false);
   const [saveEmailError, setSaveEmailError] = useState<string | null>(null);
@@ -289,6 +290,28 @@ export default function EHSCalendarLanding() {
       setBillingError(err instanceof Error ? err.message : "Checkout failed.");
     } finally {
       setBillingLoading(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    setBillingError(null);
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed) { setBillingError("Enter your subscription email first."); return; }
+    try {
+      setPortalLoading(true);
+      const res = await fetch("/api/billing/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Unable to open billing portal.");
+      if (!data?.url) throw new Error("Portal URL missing.");
+      window.location.href = data.url;
+    } catch (err) {
+      setBillingError(err instanceof Error ? err.message : "Portal failed.");
+    } finally {
+      setPortalLoading(false);
     }
   };
 
@@ -886,10 +909,25 @@ export default function EHSCalendarLanding() {
               <p style={{ marginTop: 14, fontSize: 13, color: B.coral, fontWeight: 500 }}>{saveEmailError}</p>
             )}
             {proAccess && (
-              <p style={{ marginTop: 8, fontSize: 12, color: B.forest, fontWeight: 500 }}>
-                {enterpriseAccess ? "Enterprise" : "Pro"} access confirmed
-                {entitlementStatus !== "none" ? ` (${entitlementStatus})` : ""}.
-              </p>
+              <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+                <p style={{ margin: 0, fontSize: 12, color: B.forest, fontWeight: 500 }}>
+                  {enterpriseAccess ? "Enterprise" : "Pro"} access confirmed
+                  {entitlementStatus !== "none" ? ` (${entitlementStatus})` : ""}.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleManageSubscription}
+                  disabled={portalLoading}
+                  style={{
+                    background: "transparent", border: `1px solid ${B.forest}`,
+                    color: B.forest, borderRadius: 6, padding: "4px 12px",
+                    fontSize: 12, fontFamily: sans, cursor: portalLoading ? "wait" : "pointer",
+                    opacity: portalLoading ? 0.7 : 1,
+                  }}
+                >
+                  {portalLoading ? "Opening..." : "Manage subscription"}
+                </button>
+              </div>
             )}
             {entitlementLoading && (
               <p style={{ marginTop: 8, fontSize: 12, color: "#666", fontWeight: 400 }}>
