@@ -7,16 +7,7 @@ import gfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 
-type Citation = {
-  ref: string;
-  document_id: string;
-  filename?: string | null;
-  page_or_sheet?: string | null;
-  section_path?: string | null;
-  url?: string | null; // <-- clickable link
-};
-
-type QA = { question: string; answer: string; citations?: Citation[]; ts: number };
+type QA = { question: string; answer: string; ts: number };
 
 const CAL_URL = "https://cal.com/the-green-executive-briefing";
 
@@ -57,13 +48,12 @@ const GreenGPT = () => {
 
       const data = await res.json();
       const a: string = data.answer || "No response from GreenGPT.";
-      const cits: Citation[] = Array.isArray(data.citations) ? data.citations : [];
 
       setHistory((prev) => {
         const filtered = prev.filter((h) => h.question !== asked);
         return [ ...(currentQA ? [currentQA] : []), ...filtered ].slice(0, 3);
       });
-      setCurrentQA({ question: asked, answer: a, citations: cits, ts: Date.now() });
+      setCurrentQA({ question: asked, answer: a, ts: Date.now() });
     } catch (err) {
       console.error(err);
       const a = "Error contacting GreenGPT.";
@@ -71,50 +61,10 @@ const GreenGPT = () => {
         const filtered = prev.filter((h) => h.question !== asked);
         return [ ...(currentQA ? [currentQA] : []), ...filtered ].slice(0, 3);
       });
-      setCurrentQA({ question: asked, answer: a, citations: [], ts: Date.now() });
+      setCurrentQA({ question: asked, answer: a, ts: Date.now() });
     } finally {
       setLoading(false);
     }
-  };
-
-  const Sources: React.FC<{ citations?: Citation[] }> = ({ citations }) => {
-    if (!citations || citations.length === 0) return null;
-    return (
-      <div className="mt-4">
-        <h3 className="font-medium text-green-900 mb-1">Sources</h3>
-        <ul className="list-disc pl-5 text-sm text-gray-700">
-          {citations.map((c, i) => {
-            const label = c.filename ?? c.document_id;
-            const extra =
-              c.page_or_sheet
-                ? ` (${c.page_or_sheet}${c.section_path ? ` • ${c.section_path}` : ""})`
-                : c.section_path
-                ? ` (${c.section_path})`
-                : "";
-            return (
-              <li key={`${c.ref}-${c.document_id}-${i}`}>
-                <span className="font-semibold">{c.ref}</span>{" "}
-                {c.url ? (
-                  <a
-                    href={c.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-green-700 underline hover:no-underline"
-                    title="Open source file in a new tab"
-                  >
-                    {label}
-                  </a>
-                ) : (
-                  <span>{label}</span>
-                )}
-                <span className="text-gray-500">{extra}</span>
-              </li>
-            );
-          })}
-        </ul>
-        <p className="text-xs text-gray-500 mt-1">Links expire after ~10 minutes.</p>
-      </div>
-    );
   };
 
   return (
@@ -175,8 +125,6 @@ const GreenGPT = () => {
                 Book a 30-minute Consultation
               </a>
             </div>
-
-            <Sources citations={currentQA.citations} />
           </div>
         )}
 
@@ -192,7 +140,6 @@ const GreenGPT = () => {
                       {item.answer}
                     </ReactMarkdown>
                   </div>
-                  <Sources citations={item.citations} />
                 </div>
               ))}
             </div>

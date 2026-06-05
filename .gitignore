@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# private RAG corpus (upload to Supabase Storage only — never commit)
+/ehs rag docs/

@@ -14,10 +14,6 @@ const supabase = createClient(
 );
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-// Config
-const RAG_BUCKET = process.env.SUPABASE_RAG_BUCKET || "rag-source";
-const SIGNED_URL_TTL = Number(process.env.RAG_SIGNED_URL_TTL_SECS || 600);
-
 // Budgets
 const MAX_MATCHES = Number(process.env.RAG_MAX_MATCHES || 6);
 const MAX_CHARS_PER_CHUNK = Number(process.env.RAG_MAX_CHARS_PER_CHUNK || 1800);
@@ -161,14 +157,15 @@ export async function POST(req: NextRequest) {
     if (!selected.length) {
       const answer = buildFriendlyFallback(question);
       dlog("response", "friendly-fallback-empty-context");
-      return NextResponse.json({ answer, citations: [], generalIntent });
+      return NextResponse.json({ answer, generalIntent });
     }
 
     // 5) LLM
     const baseSystem = (() => {
       // Make the assistant helpful even when context is thin.
       return [
-        `You are precise and grounded. Use ONLY the provided context for factual claims and cite as [#index].`,
+        `You are precise and grounded. Use ONLY the provided context for factual claims.`,
+        `Do not cite sources, filenames, document titles, or reference markers like [#1] in your answer.`,
         `If the context isn’t sufficient to answer confidently, do NOT say "I don't know".`,
         `Instead: (1) briefly acknowledge the gap, (2) list a few concrete next steps or clarifying questions,`,
         `(3) optionally share a short, high-level best-practice outline that is safe and non-specific,`,
@@ -195,47 +192,9 @@ export async function POST(req: NextRequest) {
     });
     dlog("llm.done", "received");
     let answer = resp.choices?.[0]?.message?.content ?? "";
+    answer = answer.replace(/\s*\[#\d+\]/g, "");
 
-    // 6) citations with filenames
-    const citationsRaw = selected.map(({ idx, h }) => {
-      const meta = docMeta.get(h.document_id) || ({ filename: null, object_key: null } as any);
-      return {
-        ref: `#${idx + 1}`,
-        document_id: h.document_id as string,
-        filename: meta?.filename ?? null,
-        object_key: meta?.object_key ?? null,
-        page_or_sheet: h.page_or_sheet as string | null,
-        section_path: h.section_path as string | null,
-      };
-    });
-
-    // 6a) Dedupe by document_id
-    const seen = new Set<string>();
-    const deduped = citationsRaw.filter((c) => {
-      if (!c.document_id) return false;
-      if (seen.has(c.document_id)) return false;
-      seen.add(c.document_id);
-      return true;
-    });
-
-    // 6b) Sign URLs
-    const withUrls = await Promise.all(
-      deduped.map(async (c) => {
-        if (!c.object_key) return { ...c, url: null as string | null };
-        const { data: signed, error: signErr } = await supabase.storage
-          .from(RAG_BUCKET)
-          .createSignedUrl(c.object_key, SIGNED_URL_TTL);
-        if (signErr || !signed?.signedUrl) {
-          dlog("sign.error", "failed to sign", { object_key: c.object_key, error: signErr?.message });
-          return { ...c, url: null as string | null };
-        }
-        return { ...c, url: signed.signedUrl as string };
-      })
-    );
-
-    const citations = withUrls.map(({ object_key, ...rest }) => rest);
-
-    // 7) Post-process: if the model still hedged, replace with friendly fallback
+    // 6) Post-process: if the model still hedged, replace with friendly fallback
     const hedging =
       !answer ||
       /\b(i (do not|don't|cannot|can't) (know|tell)|not sure|insufficient|no (context|information))\b/i.test(answer);
@@ -247,12 +206,10 @@ export async function POST(req: NextRequest) {
 
     dlog("response", "success", {
       answerLen: answer.length,
-      citations: citations.length,
-      files: citations.map((c) => c.filename).filter(Boolean),
       generalIntent,
     });
 
-    return NextResponse.json({ answer, citations, generalIntent });
+    return NextResponse.json({ answer, generalIntent });
   } catch (e: any) {
     return errorResponse(500, rid, "unhandled", "UNCAUGHT", e?.message || String(e));
   }
