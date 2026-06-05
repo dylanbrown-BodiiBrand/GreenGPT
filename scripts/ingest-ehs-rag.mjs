@@ -5,15 +5,18 @@
  *
  * Usage:
  *   node scripts/ingest-ehs-rag.mjs                  # dry-run (list files)
- *   node scripts/ingest-ehs-rag.mjs --index          # upload + POST /api/register-file
+ *   node scripts/ingest-ehs-rag.mjs --index          # upload + index via production API
+ *   node scripts/ingest-ehs-rag.mjs --index --local  # use http://localhost:3000 (dev server)
  *   node scripts/ingest-ehs-rag.mjs --index --limit 1
  *   node scripts/ingest-ehs-rag.mjs --index --filter "permit to work"
- *   node scripts/ingest-ehs-rag.mjs --index --skip-upload   # re-index keys already in storage
+ *   node scripts/ingest-ehs-rag.mjs --index --skip-upload
  *
  * Env (from .env.local): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- * Optional: APP_URL (default https://greengptadvisory.com) for register-file calls
+ * Production indexing also needs LLAMA_CLOUD_API_KEY on Vercel (PDF parsing).
+ * Optional: APP_URL or NEXT_PUBLIC_APP_URL (default https://greengptadvisory.com)
  */
 import { readFileSync, existsSync, readdirSync, statSync } from "fs";
+import { createHash } from "crypto";
 import { resolve, dirname, relative, join } from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
@@ -61,21 +64,81 @@ function contentType(ext) {
 }
 
 function parseArgs(argv) {
-  const args = { index: false, skipUpload: false, limit: Infinity, filter: null };
+  const args = { index: false, skipUpload: false, local: false, limit: Infinity, filter: null };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--index") args.index = true;
     else if (a === "--skip-upload") args.skipUpload = true;
+    else if (a === "--local") args.local = true;
     else if (a === "--limit") args.limit = Number(argv[++i]) || 1;
     else if (a === "--filter") args.filter = (argv[++i] || "").toLowerCase();
   }
   return args;
 }
 
+async function registerDocument(supabase, objectKey) {
+  const { data: signed, error: signErr } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(objectKey, 120);
+  if (signErr || !signed?.signedUrl) throw new Error(`signed URL: ${signErr?.message || "missing"}`);
+
+  const res = await fetch(signed.signedUrl);
+  if (!res.ok) throw new Error(`fetch bytes: HTTP ${res.status}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (!buf.length) throw new Error("empty file in storage");
+
+  const content_hash = createHash("sha256").update(buf).digest("hex");
+  const filename = objectKey.split("/").pop() || objectKey;
+  const file_type = (filename.split(".").pop() || "").toLowerCase();
+  const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(objectKey);
+
+  const { data: existing, error: selErr } = await supabase
+    .from("documents")
+    .select("id, content_hash")
+    .eq("filename", filename)
+    .eq("object_key", objectKey)
+    .maybeSingle();
+  if (selErr) throw new Error(`db select: ${selErr.message}`);
+
+  let documentId;
+  if (!existing) {
+    const { data, error } = await supabase
+      .from("documents")
+      .insert({
+        title: filename.replace(/\.[^.]+$/, ""),
+        filename,
+        file_type,
+        source_url: pub.publicUrl,
+        object_key: objectKey,
+        content_hash,
+        status: "pending",
+        metadata: {},
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(`db insert: ${error.message}`);
+    documentId = data.id;
+  } else {
+    documentId = existing.id;
+    if (existing.content_hash !== content_hash) {
+      const { error } = await supabase
+        .from("documents")
+        .update({ content_hash, status: "pending" })
+        .eq("id", documentId);
+      if (error) throw new Error(`db update: ${error.message}`);
+    }
+  }
+  return documentId;
+}
+
 loadEnvLocal();
 
 const args = parseArgs(process.argv);
-const appUrl = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://greengptadvisory.com").replace(/\/$/, "");
+const appUrl = (
+  args.local
+    ? "http://localhost:3000"
+    : process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://greengptadvisory.com"
+).replace(/\/$/, "");
 
 if (!existsSync(RAG_DIR)) {
   console.error(`Folder not found: ${RAG_DIR}`);
@@ -104,6 +167,7 @@ const supported = candidates.filter((f) => SUPPORTED.has(f.ext));
 const skipped = candidates.filter((f) => !SUPPORTED.has(f.ext));
 
 console.log(`RAG folder: ${RAG_DIR}`);
+console.log(`Index API:  ${appUrl}/api/index-now`);
 console.log(`Total files: ${allFiles.length}`);
 console.log(`Supported for indexing: ${supported.length}`);
 if (skipped.length) {
@@ -137,23 +201,28 @@ for (const file of toProcess) {
       if (upErr) throw new Error(`upload: ${upErr.message}`);
     }
 
-    const res = await fetch(`${appUrl}/api/register-file`, {
+    const documentId = await registerDocument(supabase, file.objectKey);
+
+    const res = await fetch(`${appUrl}/api/index-now`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ objectKey: file.objectKey }),
+      body: JSON.stringify({ documentId }),
     });
     const text = await res.text();
     let parsed;
     try {
       parsed = JSON.parse(text);
     } catch {
-      throw new Error(`register-file ${res.status}: ${text.slice(0, 200)}`);
+      throw new Error(`index-now ${res.status}: ${text.slice(0, 300)}`);
     }
     if (!res.ok || parsed.ok === false) {
-      throw new Error(parsed.message || parsed.error || text.slice(0, 200));
+      const hint =
+        parsed.message?.includes("LlamaParse") && parsed.message?.includes("401")
+          ? " (set LLAMA_CLOUD_API_KEY on Vercel or use --local with dev server)"
+          : "";
+      throw new Error((parsed.message || parsed.error || text.slice(0, 200)) + hint);
     }
-    const chunks = parsed.indexResult?.chunks ?? "?";
-    console.log(`OK (${chunks} chunks)`);
+    console.log(`OK (${parsed.chunks ?? "?"} chunks)`);
     ok++;
   } catch (err) {
     console.log(`FAIL — ${err.message}`);
