@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const base = process.env.NEXT_PUBLIC_BASE_URL || "";
+    const base = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/$/, "");
     dlog("index.call", "POST /api/index-now", { base, documentId });
     const idxRes = await fetch(`${base}/api/index-now`, {
       method: "POST",
