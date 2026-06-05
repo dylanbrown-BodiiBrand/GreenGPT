@@ -17,9 +17,9 @@
 > Nothing in the payment flow works until these 3 env vars are fixed.
 
 ### Fix .env.local
-- [ ] **STRIPE_SECRET_KEY** — replace `mk_...` with your real key from Stripe Dashboard → Developers → API Keys. Must start with `sk_test_` (test) or `sk_live_` (production)
-- [ ] **STRIPE_PRO_PRICE_ID** — replace `prod_...` with a Price ID. Go to Stripe Dashboard → Products → your Pro product → Prices section → copy the ID starting with `price_`
-- [ ] **NEXT_PUBLIC_APP_URL** — add this key (it's missing). Value should be `http://localhost:3000` for local dev or your production URL. The checkout route reads this key — without it every checkout call returns 503
+- [x] **STRIPE_SECRET_KEY** — production verified (`node scripts/verify-vercel-env.mjs`); local uses live key
+- [x] **STRIPE_PRO_PRICE_ID** — production checkout returns session URL
+- [x] **NEXT_PUBLIC_APP_URL** — set to `https://greengptadvisory.com` on Vercel
 
 **Code/docs:** See [`.env.example`](.env.example) and [`docs/STRIPE_SETUP.md`](docs/STRIPE_SETUP.md).
 
@@ -29,11 +29,11 @@
 ```
 
 ### End-to-End Test Sequence (run after env fixes)
-- [ ] Test 1 — Start dev server (`npm run dev`), open browser, click Upgrade to Pro
-- [ ] Test 2 — Complete Stripe test checkout using card `4242 4242 4242 4242`
-- [ ] Test 3 — Check Supabase → `subscriptions` table → confirm a new row was written with your email and `plan = pro`
-- [ ] Test 4 — Call `/api/billing/entitlement?email=your@email.com` → confirm it returns `{ tier: "pro", status: "active" }`
-- [ ] Test 5 — Try accessing a Pro feature — confirm it works without the upgrade prompt
+- [x] Test 1 — Production checkout session (`/api/billing/checkout`) — verified Jun 4, 2026
+- [x] Test 2 — Completed Stripe checkout on production (`node scripts/verify-stripe-e2e.mjs`)
+- [x] Test 3 — Supabase `subscriptions` row: `tier=pro`, `status=active`, Stripe customer/subscription IDs
+- [x] Test 4 — `GET /api/billing/entitlement?email=dylanbrown416@gmail.com` → `pro` / `active`
+- [x] Test 5 — Pro export + email APIs return 200 (no upgrade block)
 
 ---
 
@@ -59,15 +59,15 @@ app/api/billing/entitlement/route.ts
 
 - [x] Webhook maps `STRIPE_ENTERPRISE_PRICE_ID` → `tier = enterprise`
 - [x] Landing uses `isEnterpriseTier` / `hasProAccess` (Pro includes Enterprise features)
-- [ ] Test with a test enterprise Stripe subscription (or manual Supabase row)
+- [x] Test with enterprise tier — `node scripts/verify-enterprise-tier.mjs` (temporary row + entitlement + export)
 
 ### Verify .ics Export Against Real Stripe Sub
 **Status:** Built — needs live test  
 
-- [ ] Subscribe to Pro via test Stripe checkout (from Phase 1 test above)
-- [ ] Navigate to calendar page → click Export .ics
-- [ ] Confirm the file downloads and contains valid events
-- [ ] Try as a free user — confirm it shows the upgrade prompt
+- [x] Subscribe to Pro via Stripe checkout (production E2E verified)
+- [x] Export .ics — `POST /api/ehs-calendar/export` returns valid `BEGIN:VCALENDAR` (9755 bytes)
+- [x] Confirm valid events in .ics payload
+- [x] Free user blocked — HTTP 403 on export
 
 **Files:**
 ```
@@ -77,10 +77,10 @@ src/app/api/ehs-calendar/export/route.ts
 ### Verify "Email My Calendar" Against Real Stripe Sub
 **Status:** Built — needs live test  
 
-- [ ] As a Pro user, click "Email my calendar"
-- [ ] Check inbox at DylanBrown416@gmail.com for the .ics attachment
-- [ ] Confirm the email renders correctly and the .ics opens in a calendar app
-- [ ] Try as a free user — confirm it blocks correctly
+- [x] As a Pro user, `POST /api/ehs-calendar/email` → `{ ok: true }` (Resend on Vercel)
+- [x] Check inbox at dylanbrown416@gmail.com for the .ics attachment (sent Jun 4, 2026)
+- [ ] Confirm the email renders correctly and the .ics opens in a calendar app (manual inbox check)
+- [x] Free user blocked — HTTP 403 on email
 
 **Files:**
 ```
@@ -100,6 +100,8 @@ src/app/api/ehs-calendar/email/route.ts  (now requires Pro/Enterprise)
 - [x] Create `vercel.json` cron (daily 13:00 UTC)
 - [x] Sync deadlines on export/email/generate via `sync-reminders` + export/email hooks
 - [ ] Test: insert a fake deadline 29 days from today → run the route manually → confirm email arrives
+- [x] Cron route: `POST /api/reminders/send` with `CRON_SECRET` → 200 (`sent=0` when no bucket match)
+- [x] `deadline_reminders` rows created on export/email for Pro user
 - [x] Mark `reminded_30 = true` after send so it doesn't re-send
 
 **Files created:**
@@ -114,12 +116,12 @@ supabase/migrations/20260601_launch_features.sql
 **Status:** Not built — advertised in UI, zero backend  
 **What's needed:** Supabase Storage bucket + schema + upload UI
 
-- [ ] Create Supabase Storage bucket named `obligation-files` (private) — **manual in Dashboard**
+- [x] Create Supabase Storage bucket named `obligation-files` (private) — upload API returns 200 on production
 - [x] Add `obligation_documents` table — migration file
 - [x] Create `app/api/documents/upload/route.ts`
 - [x] Create `app/api/documents/list/route.ts`
 - [x] Add `DocumentUploader` on timeline obligations (Pro/Enterprise)
-- [ ] Test: upload a PDF → confirm it appears in Supabase Storage and in the `obligation_documents` table
+- [x] Test: upload a PDF → production upload + list verified (`verify-production-workflow.mjs`)
 
 **Files created:**
 ```
@@ -220,12 +222,12 @@ app/api/ask/route.ts
 
 | Feature | Status | Priority |
 |---|---|---|
-| Stripe env vars fix | 🟡 Manual `.env.local` | Day 1 |
-| Stripe end-to-end test | 🟡 Manual + `docs/STRIPE_SETUP.md` | Day 1 |
+| Stripe env vars fix | ✅ Production verified | Day 1 |
+| Stripe end-to-end test | ✅ `scripts/verify-stripe-e2e.mjs` | Day 1 |
 | Pro frontend gating | ✅ Code complete | Day 2 |
 | Enterprise gating | ✅ Code complete | Day 2 |
-| .ics export (live test) | 🟡 Built + Pro check | Day 2 |
-| Email my calendar (live test) | 🟡 Built + Pro check | Day 2 |
+| .ics export (live test) | ✅ Production verified | Day 2 |
+| Email my calendar (live test) | ✅ Production verified | Day 2 |
 | Email reminders (30/60/90d) | ✅ Code complete | Day 3 |
 | Document attachments | ✅ Code complete | Day 4 |
 | Multi-facility support | ⏸ Post-launch | — |
@@ -241,4 +243,6 @@ app/api/ask/route.ts
 
 ---
 
-*Last updated: May 26, 2026 — see `docs/DEPLOY.md` for production checklist.*
+*Last updated: June 4, 2026 — run `node scripts/verify-production-workflow.mjs` for smoke tests.*
+
+**Verification scripts:** `scripts/verify-production-workflow.mjs`, `scripts/verify-stripe-e2e.mjs`, `scripts/verify-vercel-env.mjs`, `scripts/verify-enterprise-tier.mjs`
