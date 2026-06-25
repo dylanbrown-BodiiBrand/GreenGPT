@@ -29,7 +29,7 @@ export default function ServicesPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             <Link href="/intake" className={primaryBtn}>
-              Managed Service
+              Managed Compliance
             </Link>
             <a
               href="https://cal.com/the-green-executive-briefing"
@@ -120,7 +120,7 @@ export default function ServicesPage() {
             </p>
             <div className="flex flex-wrap items-center gap-3 shrink-0">
               <Link href="/intake" className={primaryBtn}>
-                Managed Service
+                Managed Compliance
               </Link>
               <a
                 href="https://cal.com/the-green-executive-briefing"
