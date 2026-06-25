@@ -70,6 +70,7 @@ const fieldStyle: CSSProperties = {
   border: "1.5px solid #E0E0E0",
   fontSize: 14,
   fontFamily: sans,
+  color: "#000",
   outline: "none",
   background: B.white,
   boxSizing: "border-box",
