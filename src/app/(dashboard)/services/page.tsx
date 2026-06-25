@@ -1,5 +1,12 @@
 // src/app/services/page.tsx
+import Link from "next/link";
 import PageWrapper from "../../components/PageWrapper";
+
+const primaryBtn =
+  "inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30 focus-visible:ring-offset-2";
+
+const outlineBtn =
+  "inline-flex items-center justify-center rounded-xl border-2 border-emerald-600 bg-white px-5 py-3 text-base font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30 focus-visible:ring-offset-2";
 
 export default function ServicesPage() {
   return (
@@ -20,14 +27,19 @@ export default function ServicesPage() {
             and AI-powered insights.
           </p>
 
-          <a
-            href="https://cal.com/the-green-executive-briefing"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30 focus-visible:ring-offset-2"
-          >
-            Book a Call
-          </a>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href="/intake" className={primaryBtn}>
+              Managed Service
+            </Link>
+            <a
+              href="https://cal.com/the-green-executive-briefing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={outlineBtn}
+            >
+              Book a Call
+            </a>
+          </div>
         </div>
 
         <hr className="border-t border-emerald-200/70" />
@@ -106,14 +118,19 @@ export default function ServicesPage() {
             <p className="text-base sm:text-lg leading-relaxed text-slate-800">
               Ready to get started? Let’s explore how we can support your sustainability journey.
             </p>
-            <a
-              href="https://cal.com/the-green-executive-briefing"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30 focus-visible:ring-offset-2"
-            >
-              Book a Call
-            </a>
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <Link href="/intake" className={primaryBtn}>
+                Managed Service
+              </Link>
+              <a
+                href="https://cal.com/the-green-executive-briefing"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={outlineBtn}
+              >
+                Book a Call
+              </a>
+            </div>
           </div>
         </section>
       </section>
