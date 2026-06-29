@@ -7,8 +7,9 @@ import {
   genEvents,
 } from "@/lib/ehs-calendar/rulesEngine";
 import { buildEhsCalendarIcs } from "@/lib/ehs-calendar/buildIcs";
-import { isValidEmail, parseEhsProfile } from "@/lib/ehs-calendar/profile";
-import { requireProEmail } from "@/lib/billing/entitlementServer";
+import { parseEhsProfile } from "@/lib/ehs-calendar/profile";
+import { httpStatusFromError } from "@/lib/auth/httpError";
+import { requireProSession } from "@/lib/auth/requireProSession";
 import { eventsToReminderRows } from "@/lib/ehs-calendar/deadlineDates";
 import { getSupabaseAdmin } from "@/lib/server/supabase";
 
@@ -24,19 +25,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (!supabase) {
+    return NextResponse.json({ error: "Database is not configured.", requestId }, { status: 503 });
+  }
+
   try {
+    const { user } = await requireProSession();
     const body = await req.json();
-    const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
-
-    if (!isValidEmail(email)) {
-      return NextResponse.json({ error: "Invalid email.", requestId }, { status: 400 });
-    }
-
-    if (!supabase) {
-      return NextResponse.json({ error: "Database is not configured.", requestId }, { status: 503 });
-    }
-
-    await requireProEmail(supabase, email);
+    const email = user.email;
 
     const parsed = parseEhsProfile(body);
     if (!parsed.profile) {
@@ -120,15 +116,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, requestId });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Bad request.";
-    let status = 400;
+    let status = httpStatusFromError(error, 400);
     if (errorMessage.includes("timeout")) status = 504;
-    if (
-      error instanceof Error &&
-      "statusCode" in error &&
-      (error as Error & { statusCode: number }).statusCode === 403
-    ) {
-      status = 403;
-    }
     return NextResponse.json({ error: errorMessage, requestId }, { status });
   }
 }

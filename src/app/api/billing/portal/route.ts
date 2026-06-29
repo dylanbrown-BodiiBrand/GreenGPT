@@ -1,9 +1,11 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
+import { httpStatusFromError } from "@/lib/auth/httpError";
+import { requireSessionUser } from "@/lib/auth/requireSessionUser";
 import { getStripe } from "@/lib/billing/stripe";
+import { hasProAccess } from "@/lib/billing/tier";
 import { getSupabaseAdmin } from "@/lib/server/supabase";
-import { isValidEmail } from "@/lib/ehs-calendar/profile";
 
 export async function POST(req: NextRequest) {
   const requestId = crypto.randomUUID();
@@ -26,31 +28,22 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const email =
-      typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+    const user = await requireSessionUser();
+    await req.json().catch(() => ({}));
 
-    if (!isValidEmail(email)) {
-      return NextResponse.json(
-        { error: "Valid email is required.", requestId },
-        { status: 400 }
-      );
-    }
-
-    // Look up the Stripe customer ID from the subscriptions table
     const { data, error } = await supabase
       .from("subscriptions")
       .select("stripe_customer_id, tier")
-      .eq("customer_email", email)
+      .eq("customer_email", user.email)
       .maybeSingle();
 
     if (error) {
-      return NextResponse.json({ error: error.message, requestId }, { status: 500 });
+      return NextResponse.json({ error: "Unable to open billing portal.", requestId }, { status: 500 });
     }
 
-    if (!data || data.tier === "free") {
+    if (!data || !hasProAccess(data.tier)) {
       return NextResponse.json(
-        { error: "No active subscription found for this email.", requestId },
+        { error: "No active subscription found for your account.", requestId },
         { status: 404 }
       );
     }
@@ -62,17 +55,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create a Stripe billing portal session
     const session = await stripe.billingPortal.sessions.create({
       customer: data.stripe_customer_id,
       return_url: `${appUrl}/?billing=portal_return`,
     });
 
     return NextResponse.json({ url: session.url, requestId });
-  } catch (err: any) {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unable to open billing portal.";
     return NextResponse.json(
-      { error: err?.message || "Unable to open billing portal.", requestId },
-      { status: 500 }
+      { error: message, requestId },
+      { status: httpStatusFromError(err, 500) }
     );
   }
 }

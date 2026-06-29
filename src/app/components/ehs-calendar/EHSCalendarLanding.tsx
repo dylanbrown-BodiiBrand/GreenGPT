@@ -166,6 +166,7 @@ export default function EHSCalendarLanding() {
   const [calView, setCalView] = useState("grid");
   const [filterCat, setFilterCat] = useState<CategoryKey | null>(null);
   const [email, setEmail] = useState("");
+  const [signedIn, setSignedIn] = useState(false);
   const [entitlementStatus, setEntitlementStatus] = useState<"none" | "active" | "past_due" | "trialing" | "canceled">("none");
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
@@ -199,15 +200,28 @@ export default function EHSCalendarLanding() {
     setTimeout(() => toolRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
   };
 
-  const refreshEntitlement = async (targetEmail: string) => {
-    const normalized = targetEmail.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return;
+  const requireSignIn = (targetEmail?: string) => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams();
+    params.set("next", window.location.pathname);
+    const em = (targetEmail || email).trim().toLowerCase();
+    if (em) params.set("email", em);
+    window.location.href = `/login?${params.toString()}`;
+  };
 
+  const refreshEntitlement = async () => {
     try {
       setEntitlementLoading(true);
-      const res = await fetch(`/api/billing/entitlement?email=${encodeURIComponent(normalized)}`);
+      const res = await fetch("/api/billing/entitlement");
       const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        setSignedIn(false);
+        setTier("free");
+        setEntitlementStatus("none");
+        return;
+      }
       if (!res.ok) throw new Error(data?.error || "Failed to load subscription status.");
+      setSignedIn(true);
       const t = data?.tier;
       if (t === "enterprise") setTier("enterprise");
       else if (t === "pro") setTier("pro");
@@ -222,16 +236,28 @@ export default function EHSCalendarLanding() {
   };
 
   useEffect(() => {
+    void (async () => {
+      const res = await fetch("/api/auth/session");
+      const data = await res.json().catch(() => ({}));
+      if (data.signedIn && data.email) {
+        setSignedIn(true);
+        setEmail(data.email);
+        await refreshEntitlement();
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
     const normalized = email.trim().toLowerCase();
     if (!normalized) return;
     const timer = setTimeout(() => {
-      void refreshEntitlement(normalized);
       if (typeof window !== "undefined") {
         window.localStorage.setItem(EHS_EMAIL_KEY, normalized);
       }
+      if (signedIn) void refreshEntitlement();
     }, 400);
     return () => clearTimeout(timer);
-  }, [email]);
+  }, [email, signedIn]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -243,19 +269,18 @@ export default function EHSCalendarLanding() {
 
     const target = (email.trim() || stored || "").toLowerCase();
     if (target) {
-      void refreshEntitlement(target);
       setEmail(target);
+      if (signedIn) void refreshEntitlement();
     }
     window.history.replaceState({}, "", window.location.pathname);
   }, [email]);
 
-  const syncReminders = async (targetEmail: string) => {
-    if (!industry || !proAccess) return;
+  const syncReminders = async () => {
+    if (!industry || !proAccess || !signedIn) return;
     await fetch("/api/ehs-calendar/sync-reminders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        email: targetEmail,
         industry,
         jurisdictions,
         flags,
@@ -297,12 +322,16 @@ export default function EHSCalendarLanding() {
     setBillingError(null);
     const trimmed = email.trim().toLowerCase();
     if (!trimmed) { setBillingError("Enter your subscription email first."); return; }
+    if (!signedIn) {
+      requireSignIn(trimmed);
+      return;
+    }
     try {
       setPortalLoading(true);
       const res = await fetch("/api/billing/portal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed }),
+        body: JSON.stringify({}),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Unable to open billing portal.");
@@ -333,13 +362,16 @@ export default function EHSCalendarLanding() {
       tryLockedFeature();
       return;
     }
+    if (!signedIn) {
+      requireSignIn(trimmed);
+      return;
+    }
     try {
       setSaveEmailLoading(true);
       const res = await fetch("/api/ehs-calendar/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: trimmed,
           industry,
           jurisdictions,
           flags,
@@ -349,8 +381,8 @@ export default function EHSCalendarLanding() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Failed to send calendar.");
       setSaveEmailDone(true);
-      await refreshEntitlement(trimmed);
-      await syncReminders(trimmed);
+      await refreshEntitlement();
+      await syncReminders();
     } catch (err) {
       setSaveEmailError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -369,6 +401,10 @@ export default function EHSCalendarLanding() {
       setBillingError("Enter your subscription email to export .ics.");
       return;
     }
+    if (!signedIn) {
+      requireSignIn(normalized);
+      return;
+    }
 
     try {
       setExportLoading(true);
@@ -376,7 +412,6 @@ export default function EHSCalendarLanding() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: normalized,
           industry,
           jurisdictions,
           flags,
@@ -397,7 +432,7 @@ export default function EHSCalendarLanding() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-      await syncReminders(normalized);
+      await syncReminders();
     } catch (err) {
       setBillingError(err instanceof Error ? err.message : "Export failed.");
     } finally {
@@ -406,11 +441,11 @@ export default function EHSCalendarLanding() {
   };
 
   useEffect(() => {
-    if (step === 3 && proAccess && email.trim() && industry) {
-      void syncReminders(email.trim().toLowerCase());
+    if (step === 3 && proAccess && signedIn && email.trim() && industry) {
+      void syncReminders();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when calendar is generated for Pro users
-  }, [step, proAccess, email, industry, jurisdictions, flags, employees]);
+  }, [step, proAccess, signedIn, email, industry, jurisdictions, flags, employees]);
 
   const onSubmitContact = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -922,8 +957,7 @@ export default function EHSCalendarLanding() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onBlur={() => {
-                  const normalized = email.trim().toLowerCase();
-                  if (normalized) void refreshEntitlement(normalized);
+                  if (signedIn) void refreshEntitlement();
                 }}
                 disabled={saveEmailLoading}
                 style={{

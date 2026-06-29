@@ -4,8 +4,10 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
+import { requireSessionUser } from "@/lib/auth/requireSessionUser";
 import { embedBatch } from "@/utils/embeddings";
 import { makeLogger, errorResponse } from "@/utils/debug";
+import { httpStatusFromError } from "@/lib/auth/httpError";
 
 // Server-only client: needs storage signing + RAG RPC; requires service role.
 const supabase = createClient(
@@ -54,6 +56,8 @@ export async function POST(req: NextRequest) {
   const { rid, dlog } = makeLogger("ask");
 
   try {
+    await requireSessionUser();
+
     // 1) request
     const raw = await req.text();
     dlog("request.body", "raw", raw);
@@ -211,6 +215,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ answer, generalIntent });
   } catch (e: any) {
-    return errorResponse(500, rid, "unhandled", "UNCAUGHT", e?.message || String(e));
+    const status = httpStatusFromError(e, 500);
+    return errorResponse(status, rid, "unhandled", status === 401 ? "UNAUTHORIZED" : "UNCAUGHT", e?.message || String(e));
   }
 }

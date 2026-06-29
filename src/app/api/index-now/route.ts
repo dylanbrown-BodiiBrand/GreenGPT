@@ -4,6 +4,8 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { makeLogger, errorResponse } from "@/utils/debug";
+import { assertInternalSecret } from "@/lib/auth/requireInternalSecret";
+import { httpStatusFromError } from "@/lib/auth/httpError";
 import { parsePDFviaLlama, parseDOCX, parseXLSX } from "@/utils/parse";
 import { chunkMarkdown } from "@/utils/chunk";
 import { embedBatch } from "@/utils/embeddings";
@@ -22,6 +24,8 @@ export async function POST(req: NextRequest) {
   const { rid, dlog } = makeLogger("index-now");
 
   try {
+    assertInternalSecret(req);
+
     // ---- parse body
     const raw = await req.text();
     dlog("request", "raw body", raw);
@@ -166,6 +170,7 @@ export async function POST(req: NextRequest) {
       { headers: { "Content-Type": "application/json" } }
     );
   } catch (e: any) {
-    return errorResponse(500, rid, "unhandled", "UNCAUGHT", e?.message || String(e));
+    const status = httpStatusFromError(e, 500);
+    return errorResponse(status, rid, "unhandled", status === 401 ? "UNAUTHORIZED" : "UNCAUGHT", e?.message || String(e));
   }
 }

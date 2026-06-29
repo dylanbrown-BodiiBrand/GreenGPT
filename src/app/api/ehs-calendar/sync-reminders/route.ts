@@ -1,10 +1,11 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireProEmail } from "@/lib/billing/entitlementServer";
+import { requireProSession } from "@/lib/auth/requireProSession";
 import { eventsToReminderRows } from "@/lib/ehs-calendar/deadlineDates";
-import { isValidEmail, parseEhsProfile } from "@/lib/ehs-calendar/profile";
+import { parseEhsProfile } from "@/lib/ehs-calendar/profile";
 import { RULES, genEvents } from "@/lib/ehs-calendar/rulesEngine";
+import { httpStatusFromError } from "@/lib/auth/httpError";
 import { getSupabaseAdmin } from "@/lib/server/supabase";
 
 export async function POST(req: NextRequest) {
@@ -15,13 +16,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const { user } = await requireProSession();
     const body = await req.json();
-    const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
-    if (!isValidEmail(email)) {
-      return NextResponse.json({ error: "Valid email is required.", requestId }, { status: 400 });
-    }
-
-    await requireProEmail(supabase, email);
 
     const parsed = parseEhsProfile(body);
     if (!parsed.profile) {
@@ -36,7 +32,7 @@ export async function POST(req: NextRequest) {
       parsed.profile.flags,
       parsed.profile.employees
     );
-    const rows = eventsToReminderRows(events, year, email);
+    const rows = eventsToReminderRows(events, year, user.email);
 
     let synced = 0;
     for (const row of rows) {
@@ -54,12 +50,12 @@ export async function POST(req: NextRequest) {
           .update({ obligation_name: row.obligation_name })
           .eq("id", existing.id);
         if (updateErr) {
-          return NextResponse.json({ error: updateErr.message, requestId }, { status: 500 });
+          return NextResponse.json({ error: "Unable to sync reminders.", requestId }, { status: 500 });
         }
       } else {
         const { error: insertErr } = await supabase.from("deadline_reminders").insert(row);
         if (insertErr) {
-          return NextResponse.json({ error: insertErr.message, requestId }, { status: 500 });
+          return NextResponse.json({ error: "Unable to sync reminders.", requestId }, { status: 500 });
         }
         synced += 1;
       }
@@ -68,10 +64,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, synced, requestId });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Bad request.";
-    const status =
-      err instanceof Error && "statusCode" in err && (err as Error & { statusCode: number }).statusCode === 403
-        ? 403
-        : 400;
-    return NextResponse.json({ error: message, requestId }, { status });
+    return NextResponse.json({ error: message, requestId }, { status: httpStatusFromError(err, 400) });
   }
 }

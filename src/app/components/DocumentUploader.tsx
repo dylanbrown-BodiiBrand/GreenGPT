@@ -21,15 +21,15 @@ export default function DocumentUploader({
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const normalized = email.trim().toLowerCase();
-    if (!normalized || !obligationId) return;
+    if (!obligationId) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(
-        `/api/documents/list?email=${encodeURIComponent(normalized)}&obligationId=${encodeURIComponent(obligationId)}`
+        `/api/documents/list?obligationId=${encodeURIComponent(obligationId)}`
       );
       const data = await res.json().catch(() => ({}));
+      if (res.status === 401) throw new Error("Sign in required to view documents.");
       if (!res.ok) throw new Error(data?.error || "Failed to load documents.");
       setDocuments(data.documents ?? []);
     } catch (err) {
@@ -38,7 +38,7 @@ export default function DocumentUploader({
     } finally {
       setLoading(false);
     }
-  }, [email, obligationId]);
+  }, [obligationId]);
 
   useEffect(() => {
     void load();
@@ -46,16 +46,15 @@ export default function DocumentUploader({
 
   const onUpload = async (file: File | null) => {
     if (!file || disabled) return;
-    const normalized = email.trim().toLowerCase();
     setUploading(true);
     setError(null);
     try {
       const form = new FormData();
-      form.set("email", normalized);
       form.set("obligationId", obligationId);
       form.set("file", file);
       const res = await fetch("/api/documents/upload", { method: "POST", body: form });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 401) throw new Error("Sign in required to upload documents.");
       if (!res.ok) throw new Error(data?.error || "Upload failed.");
       await load();
     } catch (err) {

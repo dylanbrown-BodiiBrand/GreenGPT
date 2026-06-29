@@ -1,14 +1,21 @@
 // src/app/api/greengpt/route.ts
 import { NextResponse } from "next/server";
+import { isAdminEmail } from "@/lib/admin/allowlist";
+import { httpStatusFromError } from "@/lib/auth/httpError";
+import { requireSessionUser } from "@/lib/auth/requireSessionUser";
 
 export async function POST(req: Request) {
-  const { question } = await req.json();
-
-  if (!question) {
-    return NextResponse.json({ error: "No question provided" }, { status: 400 });
-  }
-
   try {
+    const user = await requireSessionUser();
+    if (!isAdminEmail(user.email)) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 403 });
+    }
+
+    const { question } = await req.json();
+    if (!question) {
+      return NextResponse.json({ error: "No question provided" }, { status: 400 });
+    }
+
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -22,13 +29,11 @@ export async function POST(req: Request) {
     });
 
     const data = await response.json();
-    console.log(data);
-    const answerText =
-  data?.output?.[0]?.content?.[0]?.text || "No answer returned";
+    const answerText = data?.output?.[0]?.content?.[0]?.text || "No answer returned";
 
-return NextResponse.json({ answer: answerText });
-
-  } catch {
-    return NextResponse.json({ error: "Failed to fetch from OpenAI" }, { status: 500 });
+    return NextResponse.json({ answer: answerText });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to fetch from OpenAI";
+    return NextResponse.json({ error: message }, { status: httpStatusFromError(err, 500) });
   }
 }

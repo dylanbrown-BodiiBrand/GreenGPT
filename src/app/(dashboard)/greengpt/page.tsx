@@ -16,6 +16,15 @@ const GreenGPT = () => {
   const [currentQA, setCurrentQA] = useState<QA | null>(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<QA[]>([]);
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const res = await fetch("/api/auth/session");
+      const data = await res.json().catch(() => ({}));
+      setSignedIn(!!data.signedIn);
+    })();
+  }, []);
 
   useEffect(() => {
     try {
@@ -33,6 +42,10 @@ const GreenGPT = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!question.trim()) return;
+    if (!signedIn) {
+      window.location.href = `/login?next=${encodeURIComponent("/greengpt")}`;
+      return;
+    }
 
     const asked = question.trim();
     setLoading(true);
@@ -80,6 +93,11 @@ const GreenGPT = () => {
         <p className="text-sm text-gray-500">
           Disclaimer: This is an AI-powered assistant. Responses should be verified for accuracy and are for learning purposes only.
         </p>
+        {signedIn === false && (
+          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4">
+            <a href="/login?next=%2Fgreengpt" className="underline font-medium">Sign in</a> to ask GreenGPT.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <textarea

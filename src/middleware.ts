@@ -10,12 +10,16 @@ function isPublicAdminPath(pathname: string): boolean {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  if (!pathname.startsWith("/admin")) {
-    return NextResponse.next();
-  }
-
   const res = NextResponse.next({ request: req });
   const supabase = createSupabaseMiddlewareClient(req, res);
+
+  if (supabase) {
+    await supabase.auth.getUser();
+  }
+
+  if (!pathname.startsWith("/admin")) {
+    return res;
+  }
 
   if (!supabase) {
     if (isPublicAdminPath(pathname)) return res;
@@ -47,5 +51,8 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };

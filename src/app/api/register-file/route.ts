@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 import { makeLogger, errorResponse } from "@/utils/debug";
+import { assertInternalSecret, internalSecretHeaders } from "@/lib/auth/requireInternalSecret";
 
 // Server-only: needs storage signed URLs and metadata updates; use service role.
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -11,6 +12,8 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 export async function POST(req: NextRequest) {
   const { rid, dlog } = makeLogger("register-file");
   try {
+    assertInternalSecret(req);
+
     const body = await req.text();
     dlog("request", "raw body", body);
     let parsed: any;
@@ -66,7 +69,7 @@ export async function POST(req: NextRequest) {
     dlog("index.call", "POST /api/index-now", { base, documentId });
     const idxRes = await fetch(`${base}/api/index-now`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...internalSecretHeaders() },
       body: JSON.stringify({ documentId })
     });
 
@@ -82,6 +85,9 @@ export async function POST(req: NextRequest) {
       headers: { "Content-Type": "application/json" }
     });
   } catch (e: any) {
+    if (e?.statusCode === 401) {
+      return errorResponse(401, rid, "auth", "UNAUTHORIZED", "Unauthorized.");
+    }
     return errorResponse(500, rid, "unhandled", "UNCAUGHT", e?.message || String(e));
   }
 }
