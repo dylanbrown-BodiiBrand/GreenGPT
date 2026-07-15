@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import NavigationMenu from "./components/navigationmenu";
 import { ThemeProvider } from "next-themes";
@@ -15,6 +16,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     data-theme="light"
     style={{ colorScheme: "light" }}
     >
+      <Script
+        data-website-id="dfid_9mR9UuAjn866RWrU7V6mL"
+        data-domain="greengptadvisory.com"
+        src="https://datafa.st/js/script.js"
+        strategy="afterInteractive"
+      />
       <body className="bg-[#FAFAF4] text-gray-900 min-h-screen font-sans">
       <ThemeProvider
           disableTransitionOnChange
