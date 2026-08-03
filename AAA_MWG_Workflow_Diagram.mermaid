@@ -1,0 +1,35 @@
+flowchart LR
+    subgraph inputs["AAA Approved Sources"]
+        A1["Site profiles"]
+        A2["Safety plans & inspection templates"]
+        A3["CERS / HMBP / SPCC documents"]
+        A4["CUPA / BAR notes, permits"]
+        A5["Training materials & internal standards"]
+        A6["Corrective action logs & inspection reports"]
+    end
+
+    subgraph workspace["GreenGPT AAA EHS Workspace (dedicated instance)"]
+        KB["Site-aware EHS knowledge base<br/>(approved sources only)"]
+        PR["EHS team prompts / requests"]
+        DR["AI-assisted draft outputs<br/>(source-linked)"]
+    end
+
+    subgraph review["Human Oversight"]
+        HR{"EHS team review<br/>& approval"}
+    end
+
+    subgraph outputs["Approved Outputs"]
+        O1["Corrective action trackers"]
+        O2["Inspection prep packets & checklists"]
+        O3["Obligation registers & evidence checklists"]
+        O4["Manager training summaries & follow-up emails"]
+        O5["Monthly compliance briefings & site readiness summaries"]
+    end
+
+    A1 & A2 & A3 & A4 & A5 & A6 -->|access-controlled ingestion| KB
+    KB --> PR
+    PR --> DR
+    DR --> HR
+    HR -->|approved| O1 & O2 & O3 & O4 & O5
+    HR -.->|revise| PR
+    O1 & O5 -.->|approved outputs enrich knowledge base| KB
