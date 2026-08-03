@@ -66,6 +66,12 @@ export default function NavigationMenu() {
         >
           Sign in
         </Link>
+        <Link
+          href="/workspace"
+          className="text-sm font-semibold text-gray-700 hover:text-green-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
+        >
+          Workspace
+        </Link>
         <button
           type="button"
           className="bg-[#0B3D2E] text-white px-4 py-2 rounded-lg hover:bg-[#0a3326] cursor-pointer text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
@@ -96,6 +102,11 @@ export default function NavigationMenu() {
               </Link>
             </li>
           ))}
+          <li>
+            <Link href="/workspace" onClick={closeMenu} className="block py-1 font-medium text-gray-800">
+              Workspace
+            </Link>
+          </li>
           <li>
             <Link href="/login" onClick={closeMenu} className="block py-1 font-medium text-gray-800">
               Sign in

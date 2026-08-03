@@ -1,221 +1,186 @@
-// src/app/api/ask/route.ts
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
 import { requireSessionUser } from "@/lib/auth/requireSessionUser";
+import { assertFacilityAccess } from "@/lib/workspace/membership";
+import { INSUFFICIENT_SOURCES_MESSAGE } from "@/lib/workspace/types";
 import { embedBatch } from "@/utils/embeddings";
 import { makeLogger, errorResponse } from "@/utils/debug";
 import { httpStatusFromError } from "@/lib/auth/httpError";
 
-// Server-only client: needs storage signing + RAG RPC; requires service role.
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-// Budgets
 const MAX_MATCHES = Number(process.env.RAG_MAX_MATCHES || 6);
 const MAX_CHARS_PER_CHUNK = Number(process.env.RAG_MAX_CHARS_PER_CHUNK || 1800);
 const MAX_CONTEXT_TOKENS = Number(process.env.RAG_MAX_CONTEXT_TOKENS || 4500);
-
-// General intent retrieval width
-const GENERAL_INTENT_K = Number(process.env.RAG_GENERAL_K || 10);
-
-// Friendly-CTA config
-const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || "Dylan.Brown@BodiiBrand.com";
-const CAL_URL =
-  process.env.CAL_URL || "https://cal.com/the-green-executive-briefing";
-
-function isGeneralIntent(q: string): boolean {
-  const s = (q || "").toLowerCase();
-  if (/\b(tell me about (you|your( self)?|this|the (tool|service|product)))\b/.test(s)) return true;
-  if (/\b(who (are|r) (you|the author|the team)|what (do|does) (you|this) do)\b/.test(s)) return true;
-  if (/\b(your (background|experience|credentials|expertise|bio|story))\b/.test(s)) return true;
-  if (/\b(general(ized)?|high[- ]level|overview|best practices|where do i start|how to get started)\b/.test(s)) return true;
-  if (/\b(advice|guidance|framework|roadmap|strategy|playbook)\b/.test(s) && s.length < 140) return true;
-  if (s.trim().length <= 24 && /\b(help|advice|guidance|tips)\b/.test(s)) return true;
-  return false;
-}
+const MIN_SOURCE_SCORE = Number(process.env.RAG_MIN_SOURCE_SCORE || 0.15);
 
 const approxTokens = (s: string) => Math.ceil(s.length / 4);
 
-function buildFriendlyFallback(question: string) {
-  return [
-    `I couldn’t find a definitive answer to “${question}” in our internal docs yet, but here’s how we typically help:`,
-    "",
-    "• Quick take: share your goal, scope, timeline, and any data you already track (spend, emissions boundaries, frameworks in scope like GHG Protocol/ISO/ESG).",
-    "• Next steps we’d propose: (1) clarify your objectives and reporting boundary, (2) map available data sources, (3) pick the right methodology, (4) outline a phased plan with quick wins.",
-    `• If you’d like a precise recommendation, reply with a bit more context—or email us at ${SUPPORT_EMAIL} or book a quick call: ${CAL_URL}.`,
-  ].join("\n");
+function draftEnvelope(payload: {
+  answer: string;
+  insufficientSources: boolean;
+  sources: { documentId?: string; filename: string; score?: number }[];
+  facilityLabel: string | null;
+  generalIntent?: boolean;
+}) {
+  return {
+    ...payload,
+    reviewStatus: "draft" as const,
+    generalIntent: !!payload.generalIntent,
+  };
 }
 
 export async function POST(req: NextRequest) {
   const { rid, dlog } = makeLogger("ask");
 
   try {
-    await requireSessionUser();
+    const user = await requireSessionUser();
 
-    // 1) request
     const raw = await req.text();
     dlog("request.body", "raw", raw);
-    let payload: any;
+    let payload: Record<string, unknown>;
     try {
       payload = JSON.parse(raw || "{}");
-    } catch (e: any) {
-      return errorResponse(400, rid, "parse.body", "BAD_JSON", e?.message || "Invalid JSON");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Invalid JSON";
+      return errorResponse(400, rid, "parse.body", "BAD_JSON", msg);
     }
 
     const question = payload?.question?.toString?.();
     if (!question) return errorResponse(400, rid, "validate", "MISSING_QUESTION", "No question");
-    dlog("question", "received", { question });
 
-    // 2) intent + embed
-    const generalIntent = isGeneralIntent(question);
-    dlog("intent", "generalIntent", { generalIntent });
+    let facilityLabel =
+      typeof payload.facilityLabel === "string" ? payload.facilityLabel.trim().slice(0, 200) : null;
+    const facilityId =
+      typeof payload.facilityId === "string" && payload.facilityId.trim()
+        ? payload.facilityId.trim()
+        : null;
 
-    const queryForEmbedding = generalIntent
-      ? `${question} — overview • summary • profile • experience • services • case studies • methodology • credentials`
-      : question;
+    if (facilityId) {
+      const access = await assertFacilityAccess(user, facilityId);
+      facilityLabel = access.facilityName;
+    }
 
-    dlog("embed.start", "creating embedding");
-    const [qvec] = await embedBatch([queryForEmbedding]);
-    dlog("embed.done", "embedding size", { dims: qvec.length });
+    dlog("question", "received", { question, facilityId, facilityLabel });
 
-    // 3) retrieve
-    const requestedK = Number.isFinite(payload?.k) ? Math.min(Number(payload.k), MAX_MATCHES) : MAX_MATCHES;
-    const k = generalIntent ? Math.max(requestedK, Math.min(GENERAL_INTENT_K, 20)) : requestedK;
+    const [qvec] = await embedBatch([question]);
+    const requestedK = Number.isFinite(payload?.k)
+      ? Math.min(Number(payload.k), MAX_MATCHES)
+      : MAX_MATCHES;
 
-    dlog("retrieve.rpc", "match_chunks", { k, generalIntent });
     const { data: hits, error } = await supabase.rpc("match_chunks", {
       query_embedding: qvec,
-      match_count: k,
+      match_count: requestedK,
     });
     if (error) {
-      dlog("retrieve.error", "match_chunks failed", { error: error.message });
       return errorResponse(500, rid, "retrieve", "VECTOR_RPC_FAILED", error.message);
     }
-    dlog("retrieve.done", "hits", { hitCount: (hits || []).length });
 
-    // 3b) hydrate docs
-    const ids = Array.from(new Set((hits || []).map((h: any) => h.document_id)));
-    let docMeta = new Map<string, { filename: string; object_key: string }>();
+    const scored = (hits || []).filter(
+      (h: { score?: number; content?: string }) =>
+        h?.content && (typeof h.score !== "number" || h.score >= MIN_SOURCE_SCORE)
+    );
+
+    const ids = Array.from(new Set(scored.map((h: { document_id: string }) => h.document_id)));
+    const docMeta = new Map<string, { filename: string }>();
     if (ids.length) {
-      const { data: docs, error: docErr } = await supabase
-        .from("documents")
-        .select("id, filename, object_key")
-        .in("id", ids);
-      if (!docErr && docs) {
-        docMeta = new Map(docs.map((d: any) => [d.id, { filename: d.filename, object_key: d.object_key }]));
+      const { data: docs } = await supabase.from("documents").select("id, filename").in("id", ids);
+      for (const d of docs ?? []) {
+        docMeta.set(d.id, { filename: d.filename });
       }
     }
 
-    (hits || []).forEach((h: any, i: number) => {
-      const meta = docMeta.get(h.document_id);
-      dlog("retrieve.hit", `#${i + 1}`, {
-        score: h.score,
-        document_id: h.document_id,
-        filename: meta?.filename,
-        preview: (h.content || "").slice(0, 160).replace(/\s+/g, " ") + "…",
-      });
-    });
-
-    // 4) context assembly
     let usedTokens = 0;
-    let truncatedCount = 0;
-    const selected: any[] = [];
+    const selected: { h: { document_id: string; score?: number; content: string; page_or_sheet?: string; section_path?: string }; block: string }[] = [];
 
-    for (const [i, h] of (hits || []).entries()) {
-      if (!h?.content) continue;
-
+    for (const [i, h] of scored.entries()) {
       let content = String(h.content);
       if (content.length > MAX_CHARS_PER_CHUNK) {
         content = content.slice(0, MAX_CHARS_PER_CHUNK) + " …[truncated]";
-        truncatedCount++;
       }
-
       const block = `[#${i + 1}] (${h.page_or_sheet ?? "n/a"}) ${h.section_path ?? ""}\n${content}`;
       const blockTokens = approxTokens(block);
-      if (usedTokens + blockTokens > MAX_CONTEXT_TOKENS) {
-        dlog("context.skip", "would exceed budget", {
-          atHit: i + 1,
-          wouldUse: usedTokens + blockTokens,
-          budget: MAX_CONTEXT_TOKENS,
-        });
-        break;
-      }
-      selected.push({ idx: i, h, block, blockTokens });
+      if (usedTokens + blockTokens > MAX_CONTEXT_TOKENS) break;
+      selected.push({ h, block });
       usedTokens += blockTokens;
     }
 
-    const context = selected.map((s) => s.block).join("\n\n---\n\n");
-    dlog("context", "assembled", {
-      chunksSelected: selected.length,
-      truncatedChunks: truncatedCount,
-      approxContextTokens: usedTokens,
-    });
+    const sources = selected.map(({ h }) => ({
+      documentId: h.document_id,
+      filename: docMeta.get(h.document_id)?.filename || "Approved document",
+      score: typeof h.score === "number" ? h.score : undefined,
+    }));
 
-    // If we have zero usable context, return a friendly fallback immediately.
     if (!selected.length) {
-      const answer = buildFriendlyFallback(question);
-      dlog("response", "friendly-fallback-empty-context");
-      return NextResponse.json({ answer, generalIntent });
+      return NextResponse.json(
+        draftEnvelope({
+          answer: INSUFFICIENT_SOURCES_MESSAGE,
+          insufficientSources: true,
+          sources: [],
+          facilityLabel,
+        })
+      );
     }
 
-    // 5) LLM
-    const baseSystem = (() => {
-      // Make the assistant helpful even when context is thin.
-      return [
-        `You are precise and grounded. Use ONLY the provided context for factual claims.`,
-        `Do not cite sources, filenames, document titles, or reference markers like [#1] in your answer.`,
-        `If the context isn’t sufficient to answer confidently, do NOT say "I don't know".`,
-        `Instead: (1) briefly acknowledge the gap, (2) list a few concrete next steps or clarifying questions,`,
-        `(3) optionally share a short, high-level best-practice outline that is safe and non-specific,`,
-        `(4) end with this call to action: "If you'd like, email ${SUPPORT_EMAIL} or book a quick call: ${CAL_URL}."`,
-        `Never invent credentials or facts not in context.`,
-      ].join(" ");
-    })();
+    const context = selected.map((s) => s.block).join("\n\n---\n\n");
+    const system = [
+      "You are GreenGPT, a source-grounded EHS compliance assistant for industrial facilities.",
+      "Use ONLY the provided approved-document context for factual and regulatory claims.",
+      "If the context is insufficient, say so clearly and do not invent CFR citations, deadlines, or applicability.",
+      "Do not provide legal advice. Frame outputs as drafts for EHS professional review.",
+      facilityLabel ? `Facility context label: ${facilityLabel}.` : "",
+      "Do not mark anything as approved. Do not claim final compliance determinations.",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
-    const personaAddOn = generalIntent
-      ? " When asked for generalized advice or about us, summarize capabilities strictly from the context. If first-person details are present, you may use them; otherwise use 'we'/'this practice'."
-      : "";
-
-    const system = baseSystem + personaAddOn;
-    const user = `Question: ${question}\n\nContext:\n${context}`;
-
-    dlog("llm.call", "openai.chat.completions.create", { model: "gpt-4o-mini", temperature: 0.2, generalIntent });
     const resp = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: system },
-        { role: "user", content: user },
+        { role: "user", content: `Question: ${question}\n\nApproved source context:\n${context}` },
       ],
-      temperature: 0.2,
+      temperature: 0.1,
     });
-    dlog("llm.done", "received");
+
     let answer = resp.choices?.[0]?.message?.content ?? "";
     answer = answer.replace(/\s*\[#\d+\]/g, "");
 
-    // 6) Post-process: if the model still hedged, replace with friendly fallback
     const hedging =
       !answer ||
-      /\b(i (do not|don't|cannot|can't) (know|tell)|not sure|insufficient|no (context|information))\b/i.test(answer);
+      /\b(i (do not|don't|cannot|can't) (know|tell)|not sure|insufficient|no (context|information)|cannot support)\b/i.test(
+        answer
+      );
 
     if (hedging) {
-      dlog("response.postprocess", "hedge-detected -> friendly-fallback");
-      answer = buildFriendlyFallback(question);
+      return NextResponse.json(
+        draftEnvelope({
+          answer: INSUFFICIENT_SOURCES_MESSAGE,
+          insufficientSources: true,
+          sources,
+          facilityLabel,
+        })
+      );
     }
 
-    dlog("response", "success", {
-      answerLen: answer.length,
-      generalIntent,
-    });
-
-    return NextResponse.json({ answer, generalIntent });
-  } catch (e: any) {
+    return NextResponse.json(
+      draftEnvelope({
+        answer,
+        insufficientSources: false,
+        sources,
+        facilityLabel,
+      })
+    );
+  } catch (e: unknown) {
     const status = httpStatusFromError(e, 500);
-    return errorResponse(status, rid, "unhandled", status === 401 ? "UNAUTHORIZED" : "UNCAUGHT", e?.message || String(e));
+    const message = e instanceof Error ? e.message : String(e);
+    return errorResponse(status, rid, "unhandled", status === 401 ? "UNAUTHORIZED" : "UNCAUGHT", message);
   }
 }
