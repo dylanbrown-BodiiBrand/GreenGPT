@@ -117,7 +117,7 @@ export default function MonthlyComplianceBriefing({ data }: { data: MonthlyBrief
               marginBottom: 8,
             }}
           >
-            The Green Executive Briefing
+            GreenGPT Advisory
           </div>
           <h1 style={{ fontFamily: serif, fontSize: 28, margin: "0 0 4px", fontWeight: 400 }}>Monthly compliance briefing</h1>
           <div style={{ fontFamily: sans, fontSize: 14, opacity: 0.6, fontWeight: 300 }}>
@@ -431,7 +431,7 @@ export default function MonthlyComplianceBriefing({ data }: { data: MonthlyBrief
             Book a review call
           </a>
           <div style={{ fontFamily: mono, fontSize: 10, opacity: 0.3, marginTop: 16 }}>
-            The Green Executive Briefing · greengptadvisory.com
+            GreenGPT Advisory · greengptadvisory.com
           </div>
         </div>
       </div>

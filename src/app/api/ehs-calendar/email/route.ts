@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
           "",
           `Open or import the file in Outlook, Google Calendar, or Apple Calendar.`,
           "",
-          `This file was generated for calendar year ${year} based on your facility profile in The Green Executive Briefing tool.`,
+          `This file was generated for calendar year ${year} based on your facility profile in the GreenGPT Advisory EHS calendar tool.`,
         ].join("\n"),
         attachments: [
           {

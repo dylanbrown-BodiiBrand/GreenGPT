@@ -532,14 +532,14 @@ export default function EHSCalendarLanding() {
 
         <div style={{ maxWidth: 720, margin: "0 auto", textAlign: "center", position: "relative" }}>
           <div style={{ fontFamily: mono, fontSize: 11, fontWeight: 600, letterSpacing: 3, textTransform: "uppercase", color: B.emerald, marginBottom: 16 }}>
-            The Green Executive Briefing
+            GreenGPT Advisory · EHS calendar tool
           </div>
           <h1 style={{ fontFamily: serif, fontSize: 44, fontWeight: 400, margin: "0 0 16px", lineHeight: 1.1 }}>
             Know every EHS deadline<br />
             <span style={{ fontStyle: "italic", color: B.sage }}>before it finds you</span>
           </h1>
           <p style={{ fontSize: 17, fontWeight: 300, opacity: 0.7, lineHeight: 1.6, margin: "0 auto 32px", maxWidth: 540 }}>
-            Select your industry, jurisdiction, and facility hazards. Our regulatory rules engine generates a personalized compliance calendar — instantly, for free.
+            Select your industry, jurisdiction, and facility hazards. Our regulatory rules engine generates a preliminary compliance calendar. Final applicability for your site still requires human review.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <button type="button" onClick={startTool} style={{
@@ -556,11 +556,11 @@ export default function EHSCalendarLanding() {
               borderRadius: 12, padding: "14px 32px", fontSize: 16, fontWeight: 600,
               fontFamily: sans, textDecoration: "none",
             }}>
-              Get managed compliance →
+              Request a diagnostic →
             </Link>
           </div>
           <div style={{ marginTop: 16, fontSize: 13, opacity: 0.4 }}>
-            Free diagnostic tool · Or let us manage your entire program
+            Free preliminary tool · Managed compliance is the primary engagement path
           </div>
         </div>
       </div>
@@ -1043,8 +1043,12 @@ export default function EHSCalendarLanding() {
       {/* ═══════════════════════════════════════════════════════════════════ */}
       <Section id="pricing" bg={B.white}>
         <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <h2 style={{ fontFamily: serif, fontSize: 32, color: B.forest, margin: "0 0 8px" }}>Simple, transparent pricing</h2>
-          <p style={{ fontSize: 15, color: "#888", fontWeight: 300 }}>Start free. Upgrade when you need state-level coverage.</p>
+          <h2 style={{ fontFamily: serif, fontSize: 32, color: B.forest, margin: "0 0 8px" }}>Calendar tool access</h2>
+          <p style={{ fontSize: 15, color: "#888", fontWeight: 300, maxWidth: 560, margin: "0 auto" }}>
+            Optional self-serve calendar features. For managed obligation registers, evidence workflows, and monthly briefings, see{" "}
+            <Link href="/services" style={{ color: B.forest, fontWeight: 600 }}>Solutions</Link> or{" "}
+            <Link href="/intake" style={{ color: B.forest, fontWeight: 600 }}>request a diagnostic</Link>.
+          </p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, maxWidth: 820, margin: "0 auto" }}>
           {[
@@ -1151,26 +1155,23 @@ export default function EHSCalendarLanding() {
       {/* SECTION 6 — TRUST                                                 */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
       <Section bg={B.white}>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontFamily: mono, fontSize: 11, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: B.emerald, marginBottom: 8 }}>Trusted by EHS professionals</div>
-          <h2 style={{ fontFamily: serif, fontSize: 28, color: B.forest, margin: "0 0 24px" }}>Built by compliance consultants, for compliance teams</h2>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20, maxWidth: 700, margin: "0 auto" }}>
-          {[
-            { quote: "We were tracking deadlines on a spreadsheet with 200 rows. This replaced it in 10 minutes and caught three obligations we'd missed entirely.", name: "EHS Director", co: "Chemical manufacturer, TX" },
-            { quote: "The jurisdiction layering is what sold us. Our California facilities have completely different obligations than our Ohio plants — this handles both.", name: "VP of Operations", co: "Food & beverage processor, multi-state" },
-          ].map((t, i) => (
-            <div key={i} style={{
-              background: B.bone, borderRadius: 14, padding: "28px 24px",
-              border: "1.5px solid #EEF0ED",
-            }}>
-              <div style={{ fontSize: 14, color: B.slate, fontWeight: 300, lineHeight: 1.6, fontStyle: "italic", marginBottom: 16 }}>
-                &ldquo;{t.quote}&rdquo;
-              </div>
-              <div style={{ fontFamily: sans, fontWeight: 600, fontSize: 13, color: B.forest }}>{t.name}</div>
-              <div style={{ fontSize: 12, color: "#999" }}>{t.co}</div>
-            </div>
-          ))}
+        <div style={{ textAlign: "center", marginBottom: 32, maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
+          <div style={{ fontFamily: mono, fontSize: 11, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: B.emerald, marginBottom: 8 }}>
+            How to evaluate this tool
+          </div>
+          <h2 style={{ fontFamily: serif, fontSize: 28, color: B.forest, margin: "0 0 16px" }}>
+            Built for EHS and operations leaders — with human review
+          </h2>
+          <p style={{ fontSize: 15, color: B.slate, fontWeight: 300, lineHeight: 1.7 }}>
+            This calendar is a preliminary rules-engine output. It does not replace permit-specific applicability review.
+            GreenGPT Advisory assists qualified EHS professionals; your organization remains the final decision owner.
+            We do not publish unverified testimonials.
+          </p>
+          <div style={{ marginTop: 20 }}>
+            <Link href="/briefing/demo" style={{ color: B.forest, fontWeight: 600, fontFamily: sans, fontSize: 14 }}>
+              View a sample monthly compliance briefing →
+            </Link>
+          </div>
         </div>
       </Section>
 
@@ -1219,7 +1220,7 @@ export default function EHSCalendarLanding() {
             { q: "How is this different from just asking ChatGPT about EHS deadlines?", a: "A chatbot generates text based on probability — it can hallucinate deadlines, miss state-specific rules, and can't filter by your facility profile. Our tool uses a coded rules engine where every obligation has a specific CFR citation, trigger conditions, and jurisdiction hierarchy. It's deterministic, auditable, and filterable." },
             { q: "What happens if I cancel my Pro subscription?", a: "You keep access through the end of your billing period. After that, your calendar reverts to the free tier (federal rules only). Your saved configuration isn't deleted — if you resubscribe, everything comes back." },
             { q: "Can I use this for multiple facilities?", a: "The Enterprise plan supports multiple facility profiles, each with its own industry, jurisdiction, and hazard configuration. You get a rollup dashboard showing compliance status across all sites." },
-            { q: "Do you offer consulting beyond the software?", a: "Yes — The Green Executive Briefing provides full EHS consulting: compliance gap assessments, SOP development, ISO 14001 implementation, and team training. The calendar tool is designed to identify gaps; our consulting team helps close them." },
+            { q: "Do you offer consulting beyond the software?", a: "Yes. GreenGPT Advisory's primary offer is managed EHS compliance: facility diagnostics, obligation registers, deadline monitoring, corrective-action follow-up, and monthly briefings with human review. The calendar tool is a supporting entry point — not the whole product." },
           ].map((faq, i) => (
             <div key={i} style={{
               marginBottom: 8, borderRadius: 12, overflow: "hidden",

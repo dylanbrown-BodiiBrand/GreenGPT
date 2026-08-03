@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import EHSCalendarLanding from "@/app/components/ehs-calendar/EHSCalendarLanding";
+import HomeLanding from "@/app/components/marketing/HomeLanding";
 
 export const metadata: Metadata = {
-  title: "Home | The Green Executive Briefing",
+  title: "Managed EHS Compliance for Industrial Facilities",
   description:
-    "Generate a personalized EHS compliance calendar from your industry, jurisdiction, and facility profile.",
+    "GreenGPT Advisory builds facility-specific compliance calendars, obligation registers, and audit-ready workflows for manufacturers without large in-house EHS teams.",
 };
 
 export default function HomePage() {
-  return <EHSCalendarLanding />;
+  return <HomeLanding />;
 }

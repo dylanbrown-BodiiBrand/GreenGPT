@@ -18,7 +18,7 @@ const INDUSTRY_LABELS: Record<string, string> = {
 export function formatIntakeAlertText(data: IntakeFormData, adminUrl?: string): string {
   const industry = INDUSTRY_LABELS[data.industry] ?? data.industry;
   const lines = [
-    "New managed compliance facility intake",
+    "New Facility Compliance Diagnostic request",
     "",
     `Company: ${data.company}`,
     `Contact: ${data.contact}${data.title ? ` (${data.title})` : ""}`,
@@ -26,7 +26,12 @@ export function formatIntakeAlertText(data: IntakeFormData, adminUrl?: string): 
     data.phone ? `Phone: ${data.phone}` : null,
     `State: ${data.state}`,
     `Industry: ${industry}`,
+    data.facility_count ? `Facilities: ${data.facility_count}` : null,
     data.employees ? `Employees: ${data.employees}` : null,
+    data.desired_workflow ? `Desired workflow: ${data.desired_workflow}` : null,
+    data.timeline ? `Timeline: ${data.timeline}` : null,
+    data.preferred_next_step ? `Preferred next step: ${data.preferred_next_step}` : null,
+    data.redacted_docs ? `Redacted docs: ${data.redacted_docs}` : null,
     data.address ? `Address: ${[data.address, data.city, data.zip].filter(Boolean).join(", ")}` : null,
     "",
     `Permits (${data.permits.length}): ${data.permits.length ? data.permits.join(", ") : "none selected"}`,
@@ -64,7 +69,7 @@ export async function sendIntakeAlert(data: IntakeFormData): Promise<{ sent: boo
   const { error } = await resend.emails.send({
     from,
     to: recipients,
-    subject: `New facility intake: ${data.company} (${data.state})`,
+    subject: `Diagnostic request: ${data.company} (${data.state})`,
     text,
   });
 

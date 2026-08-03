@@ -75,7 +75,7 @@ export function buildEhsCalendarIcs(events: LandingEvent[], year: number): strin
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//The Green Executive Briefing//EHS Calendar//EN",
+    "PRODID:-//GreenGPT Advisory//EHS Calendar//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "X-WR-CALNAME:EHS Compliance Calendar",

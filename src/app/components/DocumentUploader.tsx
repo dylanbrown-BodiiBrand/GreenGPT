@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 type Doc = { id: string; fileName: string; uploadedAt: string; url: string | null };
 
 export default function DocumentUploader({
-  email,
+  email: _email,
   obligationId,
   obligationName,
   disabled,

@@ -84,14 +84,18 @@ const GreenGPT = () => {
     <div className="bg-[#FAFAF4] min-h-screen px-6 py-12">
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-8 border border-gray-200">
         <h1 className="text-2xl font-bold text-green-800 mb-4">
-          GreenGPT – Sustainability Consulting AI
+          Ask GreenGPT
         </h1>
         <p className="text-black mb-6">
-          Ask a question about green accounting, ESG compliance, or sustainability reporting and
-          get instant AI-powered insights.
+          Signed-in workspace assistant for questions against available approved materials. Responses are drafts for
+          EHS review — not final determinations or legal advice.
         </p>
         <p className="text-sm text-gray-500">
-          Disclaimer: This is an AI-powered assistant. Responses should be verified for accuracy and are for learning purposes only.
+          Prefer a managed engagement?{" "}
+          <a href="/intake" className="underline font-medium text-green-800">
+            Request a Facility Compliance Diagnostic
+          </a>
+          .
         </p>
         {signedIn === false && (
           <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4">

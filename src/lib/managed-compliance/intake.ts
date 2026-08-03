@@ -11,6 +11,7 @@ export type IntakeFormData = {
   industry: string;
   naics: string;
   employees: string;
+  facility_count: string;
   shifts: string;
   permits: string[];
   hazards: string[];
@@ -21,6 +22,10 @@ export type IntakeFormData = {
   pain_points: string;
   audit_history: string;
   goals: string;
+  desired_workflow: string;
+  timeline: string;
+  redacted_docs: string;
+  preferred_next_step: string;
 };
 
 export const EMPTY_INTAKE: IntakeFormData = {
@@ -36,6 +41,7 @@ export const EMPTY_INTAKE: IntakeFormData = {
   industry: "",
   naics: "",
   employees: "",
+  facility_count: "",
   shifts: "",
   permits: [],
   hazards: [],
@@ -46,6 +52,10 @@ export const EMPTY_INTAKE: IntakeFormData = {
   pain_points: "",
   audit_history: "",
   goals: "",
+  desired_workflow: "",
+  timeline: "",
+  redacted_docs: "",
+  preferred_next_step: "",
 };
 
 export function isValidIntakeEmail(raw: unknown): raw is string {
@@ -81,7 +91,8 @@ export function parseIntakeBody(body: unknown): { data?: IntakeFormData; error?:
     zip: str("zip", 20),
     industry: str("industry", 80),
     naics: str("naics", 40),
-    employees: str("employees", 20),
+    employees: str("employees", 40),
+    facility_count: str("facility_count", 40),
     shifts: str("shifts", 80),
     permits: list("permits"),
     hazards: list("hazards"),
@@ -92,6 +103,10 @@ export function parseIntakeBody(body: unknown): { data?: IntakeFormData; error?:
     pain_points: str("pain_points"),
     audit_history: str("audit_history"),
     goals: str("goals"),
+    desired_workflow: str("desired_workflow", 120),
+    timeline: str("timeline", 120),
+    redacted_docs: str("redacted_docs", 40),
+    preferred_next_step: str("preferred_next_step", 120),
   };
 
   if (!data.company) return { error: "Company name is required." };

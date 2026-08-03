@@ -267,11 +267,47 @@ function TextArea({
   );
 }
 
+const EMPLOYEE_RANGES = [
+  { value: "1-49", label: "1–49" },
+  { value: "50-149", label: "50–149" },
+  { value: "150-500", label: "150–500" },
+  { value: "500+", label: "500+" },
+];
+
+const FACILITY_COUNTS = [
+  { value: "1", label: "1 facility" },
+  { value: "2-5", label: "2–5 facilities" },
+  { value: "6+", label: "6+ facilities" },
+];
+
+const WORKFLOWS = [
+  { value: "inspection_prep", label: "Facility inspection preparation" },
+  { value: "corrective_actions", label: "Corrective-action follow-up" },
+  { value: "obligation_register", label: "Permit / plan obligation register" },
+  { value: "monthly_briefing", label: "Monthly compliance briefing" },
+  { value: "not_sure", label: "Not sure yet — need guidance" },
+];
+
+const TIMELINES = [
+  { value: "asap", label: "As soon as practical" },
+  { value: "30_days", label: "Within 30 days" },
+  { value: "90_days", label: "Within this quarter" },
+  { value: "exploring", label: "Exploring options" },
+];
+
+const NEXT_STEPS = [
+  { value: "diagnostic_call", label: "Schedule a diagnostic findings call" },
+  { value: "book_call", label: "Book an introductory call" },
+  { value: "email_followup", label: "Email follow-up first" },
+];
+
+const CAL_URL = "https://cal.com/the-green-executive-briefing";
+
 const STEPS = [
   { title: "Your facility" },
   { title: "Permits & programs" },
   { title: "Workplace hazards" },
-  { title: "Current state & goals" },
+  { title: "Scope & next step" },
 ];
 
 export default function ManagedComplianceIntakeForm() {
@@ -315,12 +351,16 @@ export default function ManagedComplianceIntakeForm() {
     return (
       <div style={{ minHeight: "100vh", background: B.bone, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <style>{managedFonts}</style>
-        <div style={{ textAlign: "center", maxWidth: 480, padding: 40 }}>
-          <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
-          <h2 style={{ fontFamily: serif, fontSize: 28, color: B.forest, margin: "0 0 12px" }}>Intake complete</h2>
+        <div style={{ textAlign: "center", maxWidth: 520, padding: 40 }}>
+          <div style={{ fontSize: 56, marginBottom: 16 }} aria-hidden>
+            ✓
+          </div>
+          <h2 style={{ fontFamily: serif, fontSize: 28, color: B.forest, margin: "0 0 12px" }}>
+            Diagnostic request received
+          </h2>
           <p style={{ fontFamily: sans, fontSize: 15, color: "#666", fontWeight: 300, lineHeight: 1.6 }}>
-            We&apos;ll review your facility profile within 24 hours and send your initial compliance calendar and gap
-            assessment by email. Your first monthly briefing will arrive within the week.
+            Thanks — GreenGPT Advisory will review your facility information and follow up to schedule the diagnostic
+            discussion. We do not auto-generate a complete regulatory calendar or gap assessment without human review.
           </p>
           <div
             style={{
@@ -346,22 +386,38 @@ export default function ManagedComplianceIntakeForm() {
               What happens next
             </div>
             <div style={{ fontFamily: sans, fontSize: 13, color: B.slate, lineHeight: 1.7 }}>
-              1. We map your permits and hazards against our regulatory database
+              1. We review your intake and confirm scope drivers (sites, permits, complexity)
               <br />
-              2. You receive your personalized compliance calendar within 24 hours
+              2. We schedule a findings / scoping call
               <br />
-              3. We identify any gaps or overdue obligations
+              3. During the diagnostic we walk applicability, gaps, and recommended next steps
               <br />
-              4. Your first monthly compliance briefing arrives by email
-              <br />
-              5. You review, approve, and we handle the rest
+              4. You decide whether to proceed with a diagnostic deliverable, managed service, or pilot
             </div>
           </div>
-          <p style={{ marginTop: 24, fontFamily: sans, fontSize: 13, color: "#888" }}>
-            <Link href="/briefing/demo" style={{ color: B.forest, fontWeight: 600 }}>
+          <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+            <a
+              href={CAL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-block",
+                padding: "12px 20px",
+                borderRadius: 10,
+                background: B.forest,
+                color: B.white,
+                fontFamily: sans,
+                fontSize: 14,
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              Book a Call
+            </a>
+            <Link href="/briefing/demo" style={{ color: B.forest, fontWeight: 600, fontFamily: sans, fontSize: 13 }}>
               Preview a sample monthly briefing →
             </Link>
-          </p>
+          </div>
         </div>
       </div>
     );
@@ -384,12 +440,14 @@ export default function ManagedComplianceIntakeForm() {
               marginBottom: 8,
             }}
           >
-            Managed compliance service
+            Facility Compliance Diagnostic
           </div>
-          <h1 style={{ fontFamily: serif, fontSize: 30, margin: "0 0 8px", fontWeight: 400 }}>Facility intake form</h1>
+          <h1 style={{ fontFamily: serif, fontSize: 30, margin: "0 0 8px", fontWeight: 400 }}>
+            Diagnostic qualification
+          </h1>
           <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 300, opacity: 0.6, margin: 0 }}>
-            Tell us about your facility. We&apos;ll map your obligations, identify gaps, and deliver your first
-            compliance briefing within 48 hours.
+            Tell us enough to scope a facility diagnostic. An experienced EHS professional reviews every submission
+            before recommending next steps.
           </p>
         </div>
       </div>
@@ -450,8 +508,22 @@ export default function ManagedComplianceIntakeForm() {
               <Select label="State" required options={STATES} value={data.state} onChange={(v) => update("state", v)} half />
               <Input label="ZIP" value={data.zip} onChange={(v) => update("zip", v)} half />
               <Select label="Industry" required options={INDUSTRIES} value={data.industry} onChange={(v) => update("industry", v)} half />
+              <Select
+                label="Facility count"
+                options={FACILITY_COUNTS}
+                value={data.facility_count}
+                onChange={(v) => update("facility_count", v)}
+                half
+              />
               <Input label="NAICS / SIC code (if known)" value={data.naics} onChange={(v) => update("naics", v)} half placeholder="e.g. 325199" />
-              <Input label="Number of employees at this site" required value={data.employees} onChange={(v) => update("employees", v)} half type="number" />
+              <Select
+                label="Employees (primary facility)"
+                required
+                options={EMPLOYEE_RANGES}
+                value={data.employees}
+                onChange={(v) => update("employees", v)}
+                half
+              />
               <Input label="Number of shifts" value={data.shifts} onChange={(v) => update("shifts", v)} half placeholder="e.g. 2 shifts, 24/7" />
             </div>
           </div>
@@ -497,19 +569,51 @@ export default function ManagedComplianceIntakeForm() {
 
         {step === 3 && (
           <div>
-            <SectionHead number="5" title="Current compliance system" subtitle="Help us understand what you're working with today so we can identify gaps." />
+            <SectionHead
+              number="5"
+              title="Current state & desired next step"
+              subtitle="Help us scope the diagnostic and recommend the right engagement path."
+            />
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <TextArea
                 label="How do you currently track compliance deadlines?"
                 value={data.current_system}
                 onChange={(v) => update("current_system", v)}
-                placeholder="e.g. Excel spreadsheet, Outlook calendar, consultant handles it, not tracking..."
+                placeholder="e.g. Excel spreadsheet, Outlook calendar, SharePoint lists, consultant, not tracking..."
               />
               <TextArea
-                label="What's your biggest compliance pain point?"
+                label="What's your biggest operational compliance pain point?"
                 value={data.pain_points}
                 onChange={(v) => update("pain_points", v)}
-                placeholder="e.g. missed a Tier II deadline last year, training records are a mess..."
+                placeholder="e.g. corrective actions stall without owners, multi-site visibility is poor..."
+              />
+              <Select
+                label="Desired first workflow"
+                options={WORKFLOWS}
+                value={data.desired_workflow}
+                onChange={(v) => update("desired_workflow", v)}
+              />
+              <Select
+                label="Desired timeline"
+                options={TIMELINES}
+                value={data.timeline}
+                onChange={(v) => update("timeline", v)}
+              />
+              <Select
+                label="Can you share redacted documents for scoping?"
+                options={[
+                  { value: "yes", label: "Yes — redacted docs available" },
+                  { value: "maybe", label: "Maybe — after NDA / review" },
+                  { value: "no", label: "Not yet" },
+                ]}
+                value={data.redacted_docs}
+                onChange={(v) => update("redacted_docs", v)}
+              />
+              <Select
+                label="Preferred next step"
+                options={NEXT_STEPS}
+                value={data.preferred_next_step}
+                onChange={(v) => update("preferred_next_step", v)}
               />
               <TextArea
                 label="Recent inspections or audit history (optional)"
@@ -591,7 +695,7 @@ export default function ManagedComplianceIntakeForm() {
                 opacity: loading ? 0.7 : 1,
               }}
             >
-              {loading ? "Submitting…" : "Submit intake →"}
+              {loading ? "Submitting…" : "Request diagnostic review →"}
             </button>
           )}
         </div>
@@ -616,13 +720,12 @@ export default function ManagedComplianceIntakeForm() {
               marginBottom: 8,
             }}
           >
-            What you get
+            Diagnostic deliverables (after scoping)
           </div>
           <div style={{ fontFamily: sans, fontSize: 13, color: "#666", lineHeight: 1.7 }}>
-            Within 48 hours of submitting this form, you&apos;ll receive your personalized compliance calendar, a gap
-            assessment showing what you may be missing, and your first monthly compliance briefing. After that, we monitor
-            regulatory changes, send deadline reminders, and maintain your compliance program on an ongoing basis. You
-            review and approve — we handle the rest.
+            Starting at $750 per facility, with final pricing based on complexity: applicability questionnaire,
+            preliminary federal/state obligation register, twelve-month compliance calendar, top potential gaps, findings
+            review, and a recommended implementation plan. Nothing is treated as final without human EHS review.
           </div>
         </div>
       </div>

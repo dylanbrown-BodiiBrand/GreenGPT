@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import ManagedComplianceIntakeForm from "@/app/components/managed-compliance/ManagedComplianceIntakeForm";
 
 export const metadata: Metadata = {
-  title: "Managed Compliance Intake | The Green Executive Briefing",
+  title: "Facility Compliance Diagnostic",
   description:
-    "One-time facility intake for managed EHS compliance — we map your obligations and deliver your compliance program.",
+    "Request a Facility Compliance Diagnostic from GreenGPT Advisory — facility scoping for obligation registers, calendars, and managed EHS follow-through.",
 };
 
 export default function IntakePage() {

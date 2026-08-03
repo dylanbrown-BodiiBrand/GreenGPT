@@ -550,7 +550,7 @@ export default function EHSCalendarGenerator({
               fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 600,
               letterSpacing: 3, textTransform: "uppercase", color: BRAND.emerald,
               marginBottom: 10,
-            }}>The Green Executive Briefing</div>
+            }}>GreenGPT Advisory</div>
             <h1 style={{
               fontFamily: "'Instrument Serif', serif", fontSize: 34, fontWeight: 400,
               margin: 0, lineHeight: 1.1,

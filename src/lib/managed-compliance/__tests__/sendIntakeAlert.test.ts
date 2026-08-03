@@ -14,7 +14,8 @@ const sample: IntakeFormData = {
   zip: "07102",
   industry: "chemical_mfg",
   naics: "325199",
-  employees: "142",
+  employees: "150-500",
+  facility_count: "2-5",
   shifts: "2",
   permits: ["title_v", "tier2"],
   hazards: ["confined"],
@@ -25,11 +26,16 @@ const sample: IntakeFormData = {
   pain_points: "Missed Tier II",
   audit_history: "",
   goals: "Audit-ready",
+  desired_workflow: "corrective_actions",
+  timeline: "30_days",
+  redacted_docs: "yes",
+  preferred_next_step: "diagnostic_call",
 };
 
 describe("formatIntakeAlertText", () => {
   it("includes key facility fields and admin link", () => {
     const text = formatIntakeAlertText(sample, "https://example.com/admin/intakes");
+    expect(text).toContain("Diagnostic request");
     expect(text).toContain("Acme Chemical");
     expect(text).toContain("jane@acme.com");
     expect(text).toContain("Chemical Manufacturing");

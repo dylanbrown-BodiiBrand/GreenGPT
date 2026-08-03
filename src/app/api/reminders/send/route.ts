@@ -78,7 +78,7 @@ async function runReminderJob(req: NextRequest) {
         `Obligation: ${row.obligation_name}`,
         `Due date: ${row.deadline_date}`,
         "",
-        "— The Green Executive Briefing",
+        "— GreenGPT Advisory",
         "https://greengptadvisory.com",
       ].join("\n"),
     });
