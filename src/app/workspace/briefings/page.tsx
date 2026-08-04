@@ -1,22 +1,51 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireWorkspaceUser } from "@/lib/workspace/requireWorkspaceUser";
+import { listMembershipsForUser } from "@/lib/workspace/membership";
 import { getWorkspaceOverview } from "@/lib/workspace/queries";
-import { EmptyState, PilotBanner, ReviewBadge } from "../ui";
+import { canEditWorkspace } from "@/lib/workspace/roles";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { BriefingContent } from "@/lib/workspace/briefingBuilder";
+import type { ReviewState } from "@/lib/workspace/types";
+import { PilotBanner, ReviewBadge } from "../ui";
+import { BriefingsClient } from "./BriefingsClient";
 
 export const metadata: Metadata = { title: "Briefings" };
+
+type BriefingRow = {
+  id: string;
+  title: string;
+  period_label: string;
+  review_state: ReviewState;
+  content: BriefingContent;
+  created_at: string;
+  reviewer_name: string | null;
+};
 
 export default async function BriefingsPage() {
   const user = await requireWorkspaceUser();
   const overview = await getWorkspaceOverview(user);
+  const memberships = await listMembershipsForUser(user);
+  const canEdit = memberships[0] ? canEditWorkspace(memberships[0].role) : false;
+
+  let briefings: BriefingRow[] = [];
+  if (overview.mode === "live" && memberships[0]) {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase
+      .from("compliance_briefings")
+      .select("id, title, period_label, review_state, content, created_at, reviewer_name")
+      .eq("organization_id", memberships[0].organizationId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    briefings = (data ?? []) as BriefingRow[];
+  }
 
   return (
     <div>
       <PilotBanner mode={overview.mode} />
       <h2 className="text-2xl font-semibold text-[#0B3D2E]">Monthly compliance briefings</h2>
       <p className="mt-1 text-sm text-[#374944]">
-        Leadership-ready summaries of obligations, actions, and evidence gaps. Live briefings are delivered under
-        managed engagements.
+        Draft briefings assemble obligations, actions, and evidence gaps. Review states are explicit and audited.
       </p>
 
       <div className="mt-6 space-y-4">
@@ -26,22 +55,22 @@ export default async function BriefingsPage() {
             <ReviewBadge state="draft" />
           </div>
           <p className="mt-2 text-sm text-[#374944]">
-            Illustrative July 2026 briefing for a sample chemical manufacturing facility. Not a live client record.
+            Illustrative sample for sales/demo. Not a live client record.
           </p>
           <Link
             href="/briefing/demo"
-            className="mt-4 inline-flex rounded-lg bg-[#0B3D2E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0a3326]"
+            className="mt-4 inline-flex rounded-lg border-2 border-[#0B3D2E] px-4 py-2 text-sm font-semibold text-[#0B3D2E]"
           >
             Open sample briefing
           </Link>
         </article>
 
-        {!overview.latestBriefingLabel && (
-          <EmptyState
-            title="No live briefings yet"
-            body="When your managed cadence starts, monthly briefings will list here with draft → reviewed → approved states."
-          />
-        )}
+        <BriefingsClient
+          facilities={overview.facilities.map((f) => ({ id: f.id, name: f.name }))}
+          briefings={briefings}
+          canEdit={canEdit}
+          preview={overview.mode === "pilot_preview"}
+        />
       </div>
     </div>
   );

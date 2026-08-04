@@ -7,11 +7,13 @@ const LINKS = [
   { href: "/workspace", label: "Overview" },
   { href: "/workspace/facilities", label: "Facilities" },
   { href: "/workspace/obligations", label: "Obligations" },
+  { href: "/workspace/inspections", label: "Inspections" },
   { href: "/workspace/actions", label: "Actions" },
   { href: "/workspace/evidence", label: "Evidence" },
   { href: "/workspace/documents", label: "Documents" },
   { href: "/workspace/ask", label: "Ask GreenGPT" },
   { href: "/workspace/briefings", label: "Briefings" },
+  { href: "/workspace/audit", label: "Audit" },
 ] as const;
 
 export function WorkspaceNav() {

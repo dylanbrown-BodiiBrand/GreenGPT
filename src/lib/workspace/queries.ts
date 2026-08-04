@@ -34,7 +34,7 @@ export async function getWorkspaceOverview(user: SessionUser): Promise<Workspace
   const today = new Date().toISOString().slice(0, 10);
   const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
 
-  const [{ data: obligations }, { data: actions }, { data: evidence }, { data: documents }] =
+  const [{ data: obligations }, { data: actions }, { data: evidence }, { data: documents }, { data: briefings }] =
     await Promise.all([
       supabase
         .from("obligations")
@@ -69,9 +69,16 @@ export async function getWorkspaceOverview(user: SessionUser): Promise<Workspace
         .eq("organization_id", org.organizationId)
         .order("updated_at", { ascending: false })
         .limit(8),
+      supabase
+        .from("compliance_briefings")
+        .select("title, review_state, created_at")
+        .eq("organization_id", org.organizationId)
+        .order("created_at", { ascending: false })
+        .limit(1),
     ]);
 
   const actionRows = (actions ?? []) as CorrectiveActionRow[];
+  const latest = (briefings ?? [])[0] as { title?: string; review_state?: string } | undefined;
 
   return {
     mode: "live",
@@ -84,7 +91,9 @@ export async function getWorkspaceOverview(user: SessionUser): Promise<Workspace
     awaitingReview: actionRows.filter((a) => a.status === "awaiting_review"),
     missingEvidence: (evidence ?? []) as EvidenceItemRow[],
     recentDocuments: (documents ?? []) as WorkspaceDocumentRow[],
-    latestBriefingLabel: null,
+    latestBriefingLabel: latest?.title
+      ? `${latest.title} (${latest.review_state ?? "draft"})`
+      : null,
   };
 }
 
