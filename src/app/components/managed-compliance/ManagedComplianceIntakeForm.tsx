@@ -284,6 +284,7 @@ const WORKFLOWS = [
   { value: "inspection_prep", label: "Facility inspection preparation" },
   { value: "corrective_actions", label: "Corrective-action follow-up" },
   { value: "obligation_register", label: "Permit / plan obligation register" },
+  { value: "ardr_diagnostic", label: "ARDR applicability matrix (diagnostic worksheet)" },
   { value: "monthly_briefing", label: "Monthly compliance briefing" },
   { value: "not_sure", label: "Not sure yet — need guidance" },
 ];
@@ -386,13 +387,15 @@ export default function ManagedComplianceIntakeForm() {
               What happens next
             </div>
             <div style={{ fontFamily: sans, fontSize: 13, color: B.slate, lineHeight: 1.7 }}>
-              1. We review your intake and confirm scope drivers (sites, permits, complexity)
+              1. We review this web intake and confirm scope drivers (sites, permits, complexity)
               <br />
-              2. We schedule a findings / scoping call
+              2. We schedule a findings / scoping call and confirm diagnostic fee
               <br />
-              3. During the diagnostic we walk applicability, gaps, and recommended next steps
+              3. During the paid diagnostic we complete the ARDR matrix (Applies?, evidence, owners), calendar, and gaps
               <br />
-              4. You decide whether to proceed with a diagnostic deliverable, managed service, or pilot
+              4. Applicable rows load into the Managed Workspace for ongoing status, evidence, and CAPs
+              <br />
+              5. You decide whether to proceed with managed service or a workspace pilot
             </div>
           </div>
           <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
@@ -417,6 +420,12 @@ export default function ManagedComplianceIntakeForm() {
             <Link href="/briefing/demo" style={{ color: B.forest, fontWeight: 600, fontFamily: sans, fontSize: 13 }}>
               Preview a sample monthly briefing →
             </Link>
+            <a
+              href="/templates/GreenGPT-ARDR-Facility-Template.xlsx"
+              style={{ color: B.forest, fontWeight: 600, fontFamily: sans, fontSize: 13 }}
+            >
+              Preview blank ARDR diagnostic worksheet →
+            </a>
           </div>
         </div>
       </div>
@@ -446,8 +455,18 @@ export default function ManagedComplianceIntakeForm() {
             Diagnostic qualification
           </h1>
           <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 300, opacity: 0.6, margin: 0 }}>
-            Tell us enough to scope a facility diagnostic. An experienced EHS professional reviews every submission
-            before recommending next steps.
+            Light commercial intake only — enough to scope a facility diagnostic. You do not need to complete an ARDR
+            matrix to submit. An experienced EHS professional reviews every request before recommending next steps.
+          </p>
+          <p style={{ fontFamily: sans, fontSize: 13, fontWeight: 400, opacity: 0.75, margin: "12px 0 0" }}>
+            Optional for serious buyers:{" "}
+            <a
+              href="/templates/GreenGPT-ARDR-Facility-Template.xlsx"
+              style={{ color: B.emerald, fontWeight: 600 }}
+            >
+              download the blank ARDR template
+            </a>{" "}
+            to preview the diagnostic worksheet. Completing it is part of the paid diagnostic, not this form.
           </p>
         </div>
       </div>
@@ -720,14 +739,25 @@ export default function ManagedComplianceIntakeForm() {
               marginBottom: 8,
             }}
           >
-            Diagnostic deliverables (after scoping)
+            Diagnostic deliverables (after paid scoping)
           </div>
           <div style={{ fontFamily: sans, fontSize: 13, color: "#666", lineHeight: 1.7 }}>
-            Starting at $750 per facility, with final pricing based on complexity: applicability questionnaire, ARDR
-            matrix and preliminary obligation register, twelve-month compliance calendar, top potential gaps, findings
-            review, and a recommended implementation plan. Ongoing status, evidence, and CAPs live in the Managed
-            Workspace; ARDR is an export format. Nothing is treated as final without human EHS review.
+            Starting at $750 per facility, with final pricing based on complexity. This web form is commercial intake
+            only — a completed ARDR is not required to request a diagnostic. The paid diagnostic produces the ARDR
+            working matrix (required worksheet), preliminary obligation register, twelve-month calendar, top gaps,
+            findings review, and a recommended plan. Ongoing status, evidence, and CAPs then live in the Managed
+            Workspace; ARDR remains available as a structured input during the diagnostic and as an .xlsx export
+            afterward. Nothing is treated as final without human EHS review.
           </div>
+          <p style={{ fontFamily: sans, fontSize: 13, margin: "12px 0 0" }}>
+            <a
+              href="/templates/GreenGPT-ARDR-Facility-Template.xlsx"
+              style={{ color: B.forest, fontWeight: 600 }}
+            >
+              Preview blank ARDR template (.xlsx)
+            </a>
+            <span style={{ color: "#888" }}> — optional; not required to submit this form.</span>
+          </p>
         </div>
       </div>
     </div>

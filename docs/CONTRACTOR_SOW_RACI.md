@@ -16,8 +16,8 @@ Contractor provides **human EHS judgment and delivery** for assigned facilities.
 
 | Type | Contractor delivers | Typical exit |
 |------|---------------------|--------------|
-| **Facility Compliance Diagnostic** | Applicability questionnaire support, ARDR matrix (scaffold + preliminary register), 12‑month calendar (human-checked), top gaps, findings call support, recommended plan | Findings pack + ARDR export + next-step recommendation |
-| **Managed EHS Compliance** | Maintained register/calendar hygiene **in workspace**, CAP & evidence follow-up, inspection prep support, monthly briefing draft + review, ARDR .xlsx export when needed | Monthly operating rhythm |
+| **Facility Compliance Diagnostic** | Web scoping support, **ARDR as required working matrix** (scaffold → filled Applies?/evidence/owners), preliminary register, 12‑month calendar (human-checked), top gaps, findings call, recommended plan | Findings pack + completed ARDR + next-step recommendation; applicable rows ready to load into workspace |
+| **Managed EHS Compliance** | Maintained register/calendar hygiene **in workspace**, CAP & evidence follow-up, inspection prep, monthly briefing draft + review; **ARDR .xlsx export** when a client pack is needed | Monthly operating rhythm |
 | **Custom workspace / pilot** | Source review, workflow setup support, validated prompts, sample trackers/briefing, user coaching | Pilot closeout + expand/stop decision |
 
 Exact facilities, fee, and hours are set in the assignment email / PO (not this one-pager).
@@ -32,10 +32,13 @@ Exact facilities, fee, and hours are set in the assignment email / PO (not this 
 |----------|:---------:|:----------:|:------:|
 | Sales, pricing, contract | **A/R** | I | C |
 | Scope limits (sites, docs, cadence) | **A** | C | C |
+| Commercial web intake (`/intake`) review | A | **R** | C |
 | Diagnostic / managed intake review | A | **R** | C |
+| **ARDR diagnostic worksheet** (fill Applies?, evidence, owners during paid diagnostic) | A | **R** | C |
 | Obligation register & calendar quality (workspace SoR) | A | **R** | C |
-| ARDR .xlsx export / client pack from workspace | A | **R** | I |
-| Blank ARDR template (applicability workshop only) | C | **R** | C |
+| Load applicable ARDR rows into workspace | A | **R** | I |
+| ARDR .xlsx **export** / client pack from workspace | A | **R** | I |
+| Blank ARDR preview (optional pre-sale; not required to request diagnostic) | C | C | I |
 | Final applicability for *their* site | I | C | **A** |
 | Workspace provisioning (org, users, facilities) | **A/R** | I | I |
 | Approved / redacted document intake | C | **R** | **A** (what may be shared) |
@@ -65,7 +68,9 @@ Exact facilities, fee, and hours are set in the assignment email / PO (not this 
 ## 5. Non‑negotiable rules
 
 - GreenGPT **assists**; it does **not** replace Client EHS accountability.  
-- The **workspace** is the system of record for status, evidence, and CAPs. **ARDR is an export format** — do not chase live work only in the spreadsheet.  
+- **Commercial intake** is the web form only — do not require a completed ARDR to request a diagnostic.  
+- During the **paid diagnostic**, ARDR is the **required working worksheet** (structured input). After load, the **workspace** is the system of record for status, evidence, and CAPs.  
+- Post-diagnostic **ARDR is an export / handoff format** — do not chase live work only in the spreadsheet.  
 - AI output is **never** auto-approved.  
 - No unsourced regulatory assertions.  
 - No legal advice; complex legal questions → Client counsel.  

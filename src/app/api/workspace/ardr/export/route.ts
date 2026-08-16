@@ -25,7 +25,9 @@ import type {
 
 /**
  * Export ARDR-shaped .xlsx snapshot for a facility.
- * Workspace remains system of record for status, evidence, and CAPs.
+ *
+ * Positioning: commercial intake = /intake (no ARDR required). Paid diagnostic = ARDR working worksheet.
+ * Workspace = SoR for status/evidence/CAPs. This route = export / handoff snapshot.
  *
  * Query: facilityId (optional if org has a single facility)
  * Query: preview=1 → sample pilot workbook (session required)

@@ -52,10 +52,10 @@ export function ArdrExportClient({
 
   return (
     <div className="mt-6 rounded-xl border border-[#E8E6E0] bg-[#F8FAF9] p-5">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-[#059669]">ARDR export</h3>
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-[#059669]">ARDR worksheet &amp; export</h3>
       <p className="mt-2 text-sm text-[#374944]">
-        Download an Applicable Regulations &amp; Document Review (.xlsx) snapshot. The workspace stays the system of
-        record for status, evidence, and CAPs — re-export when you need a client or walkdown pack.
+        During a paid diagnostic, ARDR is the working applicability matrix (structured input). After rows live here,
+        this export is a snapshot for client packs and walkdowns — status, evidence, and CAPs stay in the workspace.
       </p>
 
       <div className="mt-4 flex flex-wrap items-end gap-3">
@@ -91,16 +91,22 @@ export function ArdrExportClient({
           href="/templates/GreenGPT-ARDR-Facility-Template.xlsx"
           className="text-sm font-semibold text-[#0B3D2E] underline-offset-2 hover:underline"
         >
-          Blank ARDR template
+          Blank diagnostic ARDR template
         </a>
       </div>
 
       {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
       {preview ? (
         <p className="mt-3 text-xs text-[#6B7280]">
-          Pilot preview exports sample rows only. Live facility exports require a provisioned organization.
+          Pilot preview exports sample rows only. Live facility exports require a provisioned organization. Blank
+          template is for diagnostic workshops — not a second public intake form.
         </p>
-      ) : null}
+      ) : (
+        <p className="mt-3 text-xs text-[#6B7280]">
+          Blank template = diagnostic workshop scaffold. Re-export after workspace updates when you need a spreadsheet
+          pack.
+        </p>
+      )}
     </div>
   );
 }

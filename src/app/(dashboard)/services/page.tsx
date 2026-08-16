@@ -41,9 +41,9 @@ export default function ServicesPage() {
             price="Starting at $750 per facility (final pricing based on complexity)"
             lead="A paid entry engagement that scopes your facility and produces a usable first register and calendar."
             bullets={[
-              "Facility applicability questionnaire",
-              "ARDR matrix + preliminary obligation register",
-              "Twelve-month compliance calendar",
+              "Light web intake to scope the engagement",
+              "ARDR matrix as the diagnostic working worksheet",
+              "Preliminary obligation register + 12-month calendar",
               "Top potential compliance gaps",
               "Findings review call",
               "Recommended implementation plan",
@@ -62,7 +62,7 @@ export default function ServicesPage() {
               "Permit and reporting tracker",
               "Draft inspection and reporting materials",
               "Corrective-action and evidence tracking",
-              "ARDR .xlsx export for client packs",
+              "ARDR .xlsx export (handoff packs — not the live master)",
               "Monthly compliance briefing",
               "Quarterly program review",
               "Human EHS review",

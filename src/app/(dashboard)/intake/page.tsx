@@ -4,7 +4,7 @@ import ManagedComplianceIntakeForm from "@/app/components/managed-compliance/Man
 export const metadata: Metadata = {
   title: "Facility Compliance Diagnostic",
   description:
-    "Request a Facility Compliance Diagnostic from GreenGPT Advisory — facility scoping for obligation registers, calendars, and managed EHS follow-through.",
+    "Request a Facility Compliance Diagnostic — light web intake for scoping. The ARDR matrix is the paid diagnostic worksheet; the Managed Workspace holds live status, evidence, and CAPs.",
 };
 
 export default function IntakePage() {

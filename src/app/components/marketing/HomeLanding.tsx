@@ -182,9 +182,9 @@ export default function HomeLanding() {
               price="Starting at $750 per facility"
               note="Final pricing based on complexity."
               bullets={[
-                "Facility applicability questionnaire",
-                "ARDR matrix + preliminary obligation register",
-                "Twelve-month compliance calendar",
+                "Light web intake to scope the engagement",
+                "ARDR matrix as the diagnostic working worksheet",
+                "Preliminary obligation register + 12-month calendar",
                 "Top potential compliance gaps",
                 "Findings review and recommended plan",
               ]}
@@ -200,7 +200,7 @@ export default function HomeLanding() {
                 "Workspace obligation register (system of record)",
                 "Calendar and deadline monitoring",
                 "Corrective-action and evidence tracking",
-                "ARDR .xlsx export for client packs",
+                "ARDR .xlsx export (handoff packs — not the live master)",
                 "Monthly compliance briefing",
                 "Human EHS review",
               ]}

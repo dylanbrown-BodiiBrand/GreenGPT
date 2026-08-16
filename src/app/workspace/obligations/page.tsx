@@ -42,7 +42,8 @@ export default async function ObligationsPage() {
       <h2 className="text-2xl font-semibold text-[#0B3D2E]">Obligation register</h2>
       <p className="mt-1 text-sm text-[#374944]">
         Source-linked requirements with owners, due dates, and review state. AI-extracted rows stay drafts until
-        approved. Export an ARDR .xlsx when you need a snapshot — status, evidence, and CAPs stay live here.
+        approved. During a diagnostic, ARDR is the working worksheet that seeds this register; afterward, export ARDR
+        for packs — status, evidence, and CAPs stay live here.
       </p>
 
       <ArdrExportClient

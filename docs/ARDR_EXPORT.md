@@ -1,32 +1,44 @@
-# ARDR as a workspace export format
+# ARDR — diagnostic worksheet, structured input, and export
 
 **ARDR** = Applicable Regulations & Document Review (facility compliance matrix).
 
-## Positioning
+## Three layers (do not collapse these)
 
-| Artifact | Role |
-|----------|------|
-| **Managed EHS Workspace** | **System of record** — obligation status, evidence, CAPs, review states, audit trail |
-| **ARDR .xlsx** | **Export / handoff format** — diagnostic workshop scaffold, client pack, inspection binder snapshot |
-| **Blank ARDR template** | Applicability workshop starting point (program-area tabs). Does not replace live tracking |
+| Stage | Artifact | Role |
+|-------|----------|------|
+| **Before sale** | Web form at `/intake` | **Commercial / scoping intake only** — contact, site profile, permits/hazards, goals. **Do not require ARDR to request a diagnostic.** Blank ARDR may be offered as an optional preview for serious buyers. |
+| **Paid diagnostic** | Filled ARDR workbook | **Required working product** — contractor + client set Applies?, evidence notes, owners, gaps. Structured input that seeds the obligation register and calendar. Returnable mid-engagement (“send completed ARDR + redacted docs”). |
+| **Managed / ongoing** | Managed EHS Workspace | **System of record** for status, evidence, CAPs, review states, audit trail. |
+| **Anytime after load** | ARDR `.xlsx` export | **Snapshot / handoff format** — client pack, walkdown binder, findings appendix. Re-export from workspace; do not chase live work only in the spreadsheet. |
 
-Do **not** treat a downloaded spreadsheet as the master for status, evidence, or corrective actions. Update those in the workspace, then re-export.
+## What ARDR is not
 
-## Where it lives in product
+- Not a second public lead-gen form competing with `/intake`
+- Not the live master for status, evidence, or corrective actions
+- Not legal advice or a substitute for Client applicability ownership
 
-- Blank template: `/templates/GreenGPT-ARDR-Facility-Template.xlsx` (also under `templates/` in repo)
-- Live snapshot export: `GET /api/workspace/ardr/export?facilityId=…`
-- Pilot sample: `GET /api/workspace/ardr/export?preview=1`
-- UI: Workspace → Obligations → **ARDR export**
+## Product surfaces
 
-## Export contents
+| Surface | Purpose |
+|---------|---------|
+| `/intake` | Light commercial intake; optional blank ARDR download |
+| `/templates/GreenGPT-ARDR-Facility-Template.xlsx` | Blank scaffold (diagnostic workshop / serious-buyer preview) |
+| Workspace → Obligations → ARDR export | Live snapshot from workspace records |
+| `GET /api/workspace/ardr/export?facilityId=…` | Authenticated facility export |
+| `GET /api/workspace/ardr/export?preview=1` | Sample pilot workbook |
 
-1. **Cover** — facility meta + explicit “workspace is system of record” guidance  
-2. **Obligation Register** — ARDR columns filled from workspace obligations  
+## Diagnostic flow (target operating model)
+
+1. Client submits **web intake** (qualify + scope).  
+2. Principal confirms fee/scope → paid **Facility Compliance Diagnostic**.  
+3. Contractor issues blank or pre-seeded **ARDR**; client/contractor complete Applies? and yellow columns.  
+4. Findings call uses ARDR + calendar + gaps; Client owns final applicability.  
+5. Applicable rows load into **workspace** obligation register.  
+6. Managed phase: update status / evidence / CAPs **in workspace**; export ARDR when a spreadsheet pack is needed.
+
+## Export workbook contents (managed snapshot)
+
+1. **Cover** — facility meta + SoR guidance  
+2. **Obligation Register** — ARDR columns from workspace obligations  
 3. **CAPs (workspace)** — corrective-action snapshot  
 4. **Evidence (workspace)** — evidence-item snapshot  
-
-## Diagnostic vs managed
-
-- **Diagnostic:** blank/scaffolded ARDR + preliminary register; load applicable rows into workspace for ongoing work  
-- **Managed:** maintain register/CAPs/evidence in workspace; export ARDR when the client needs a spreadsheet pack

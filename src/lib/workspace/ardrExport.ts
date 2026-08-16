@@ -161,7 +161,7 @@ export async function buildArdrWorkbook(input: ArdrExportInput): Promise<ExcelJS
     "Applicable Regulations & Document Review (ARDR) — Facility Compliance Matrix (export)";
   cover.getCell("B3").font = { bold: true, size: 12 };
   cover.getCell("B4").value =
-    "Export format only. The Managed EHS Workspace is the system of record for obligation status, evidence, and corrective actions (CAPs).";
+    "Roles: (1) Paid diagnostic — ARDR is the working applicability worksheet. (2) Managed — workspace is system of record for status, evidence, and CAPs. (3) This file — export / handoff snapshot only.";
   cover.getCell("B4").font = { italic: true, color: { argb: "FF6B7280" } };
 
   const coverFields: [string, string][] = [
@@ -180,14 +180,14 @@ export async function buildArdrWorkbook(input: ArdrExportInput): Promise<ExcelJS
     cover.getCell(`C${row}`).value = value;
   });
 
-  cover.getCell("B14").value = "How this export relates to the workspace";
+  cover.getCell("B14").value = "How this export relates to intake, diagnostic, and workspace";
   cover.getCell("B14").font = { bold: true };
   cover.getCell("B15").value =
-    "1. Update Applies?, Status, Evidence, Owners, and CAP closure in the workspace — not by editing this file as the master.";
+    "1. Commercial intake is the web form at /intake — a completed ARDR is not required to request a diagnostic.";
   cover.getCell("B16").value =
-    "2. Re-export ARDR when you need a client pack, agency walkdown binder, or diagnostic handoff snapshot.";
+    "2. During the paid diagnostic, complete Applies?, evidence, and owners in the ARDR worksheet; that matrix seeds the workspace register.";
   cover.getCell("B17").value =
-    "3. Blank program-area scaffolding (Safety, Air, Water, …) is available as the Facility ARDR template for applicability workshops; live tracking stays in-workspace.";
+    "3. After load, update status, evidence, and CAPs in the Managed Workspace — then re-export ARDR for client packs or walkdowns.";
   cover.getCell("B18").value =
     "4. This matrix is a working draft until reviewed and approved. It supports — and does not replace — the Client’s EHS accountability. Not legal advice.";
   if (input.preview) {
