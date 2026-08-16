@@ -183,7 +183,7 @@ export default function HomeLanding() {
               note="Final pricing based on complexity."
               bullets={[
                 "Facility applicability questionnaire",
-                "Preliminary federal and state obligation register",
+                "ARDR matrix + preliminary obligation register",
                 "Twelve-month compliance calendar",
                 "Top potential compliance gaps",
                 "Findings review and recommended plan",
@@ -197,9 +197,10 @@ export default function HomeLanding() {
               price="Generally $750–$2,000 / facility / month"
               note="Scope-based monthly service."
               bullets={[
-                "Maintained obligation register",
+                "Workspace obligation register (system of record)",
                 "Calendar and deadline monitoring",
-                "Corrective-action tracking",
+                "Corrective-action and evidence tracking",
+                "ARDR .xlsx export for client packs",
                 "Monthly compliance briefing",
                 "Human EHS review",
               ]}

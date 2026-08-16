@@ -723,9 +723,10 @@ export default function ManagedComplianceIntakeForm() {
             Diagnostic deliverables (after scoping)
           </div>
           <div style={{ fontFamily: sans, fontSize: 13, color: "#666", lineHeight: 1.7 }}>
-            Starting at $750 per facility, with final pricing based on complexity: applicability questionnaire,
-            preliminary federal/state obligation register, twelve-month compliance calendar, top potential gaps, findings
-            review, and a recommended implementation plan. Nothing is treated as final without human EHS review.
+            Starting at $750 per facility, with final pricing based on complexity: applicability questionnaire, ARDR
+            matrix and preliminary obligation register, twelve-month compliance calendar, top potential gaps, findings
+            review, and a recommended implementation plan. Ongoing status, evidence, and CAPs live in the Managed
+            Workspace; ARDR is an export format. Nothing is treated as final without human EHS review.
           </div>
         </div>
       </div>

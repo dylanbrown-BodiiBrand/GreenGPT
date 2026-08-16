@@ -42,7 +42,7 @@ export default function ServicesPage() {
             lead="A paid entry engagement that scopes your facility and produces a usable first register and calendar."
             bullets={[
               "Facility applicability questionnaire",
-              "Preliminary federal and state obligation register",
+              "ARDR matrix + preliminary obligation register",
               "Twelve-month compliance calendar",
               "Top potential compliance gaps",
               "Findings review call",
@@ -57,11 +57,12 @@ export default function ServicesPage() {
             price="Generally $750–$2,000 per facility per month (scope-based)"
             lead="Ongoing operating rhythm: maintained registers, deadline monitoring, corrective-action follow-up, and monthly briefings."
             bullets={[
-              "Maintained obligation register",
+              "Workspace obligation register (system of record)",
               "Calendar and deadline monitoring",
               "Permit and reporting tracker",
               "Draft inspection and reporting materials",
-              "Corrective-action tracking",
+              "Corrective-action and evidence tracking",
+              "ARDR .xlsx export for client packs",
               "Monthly compliance briefing",
               "Quarterly program review",
               "Human EHS review",

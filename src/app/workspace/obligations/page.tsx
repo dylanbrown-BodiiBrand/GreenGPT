@@ -6,6 +6,7 @@ import { listMembershipsForUser } from "@/lib/workspace/membership";
 import { PILOT_PREVIEW } from "@/lib/workspace/sampleWorkspace";
 import type { ObligationRow } from "@/lib/workspace/types";
 import { EmptyState, PilotBanner, ReviewBadge } from "../ui";
+import { ArdrExportClient } from "./ArdrExportClient";
 
 export const metadata: Metadata = { title: "Obligations" };
 
@@ -41,8 +42,13 @@ export default async function ObligationsPage() {
       <h2 className="text-2xl font-semibold text-[#0B3D2E]">Obligation register</h2>
       <p className="mt-1 text-sm text-[#374944]">
         Source-linked requirements with owners, due dates, and review state. AI-extracted rows stay drafts until
-        approved.
+        approved. Export an ARDR .xlsx when you need a snapshot — status, evidence, and CAPs stay live here.
       </p>
+
+      <ArdrExportClient
+        facilities={overview.facilities.map((f) => ({ id: f.id, name: f.name }))}
+        preview={overview.mode === "pilot_preview"}
+      />
 
       {rows.length === 0 ? (
         <div className="mt-6">
