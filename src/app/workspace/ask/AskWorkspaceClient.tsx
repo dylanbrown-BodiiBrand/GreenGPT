@@ -9,7 +9,14 @@ import { ReviewBadge } from "../ui";
 
 type FacilityOption = { id: string; name: string; preview?: boolean };
 
-type SourceRef = { documentId?: string; filename: string; score?: number };
+type SourceRef = { documentId?: string; filename: string; score?: number; library?: string };
+
+const LIBRARY_LABEL: Record<string, string> = {
+  workspace: "Workspace records",
+  regulation: "Regulation",
+  ehs_library: "GreenGPT EHS library",
+  client_document: "Your approved document",
+};
 
 type AskResult = {
   question: string;
@@ -57,6 +64,7 @@ export function AskWorkspaceClient({
         body: JSON.stringify({
           question: asked,
           facilityId: facilityId.startsWith("preview-") ? null : facilityId || null,
+          preview: facilityId.startsWith("preview-"),
           facilityLabel: facilities.find((f) => f.id === facilityId)?.name ?? null,
         }),
       });
@@ -212,6 +220,9 @@ export function AskWorkspaceClient({
               <ul className="mt-2 space-y-1 text-sm text-[#374944]">
                 {current.sources.map((s, i) => (
                   <li key={`${s.filename}-${i}`}>
+                    {s.library && LIBRARY_LABEL[s.library] ? (
+                      <span className="font-semibold text-[#0B3D2E]">{LIBRARY_LABEL[s.library]}: </span>
+                    ) : null}
                     {s.filename}
                     {typeof s.score === "number" ? ` · relevance ${s.score.toFixed(2)}` : ""}
                   </li>

@@ -21,3 +21,7 @@
 --   '150-500',
 --   'pilot'
 -- );
+
+-- Link the facility to its diagnostic intake so Ask can use permits, hazards, chemicals, and waste streams
+-- (requires 20261027_ask_context_library.sql). Find the intake id in Admin → Intakes.
+-- update public.facilities set intake_id = '<facility_intakes.id>' where id = '<facility id>';

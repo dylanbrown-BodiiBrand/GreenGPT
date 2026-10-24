@@ -18,6 +18,12 @@
  *   --approved marks them client-approved so they can ground answers; otherwise they stay draft
  *   Without --org, files go to the shared library (federal/state rules, EHS reference material).
  *
+ * Shared library category (spec §3.6; uncategorized shared documents never ground answers):
+ *   --library regulation|ehs_guidance|template   default: by folder (EHS Implementation Guideline → ehs_guidance,
+ *                                                EHS Mandatory Forms / EHS Suggested Template → template)
+ *   --jurisdiction "New Jersey"                  state rules; must match facilities.state (federal rules: scripts/sync-ecfr.mjs)
+ *   node scripts/ingest-ehs-rag.mjs --index --dir "regulations/New Jersey" --library regulation --jurisdiction "New Jersey"
+ *
  * Env (from .env.local): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET
  * Production indexing also needs LLAMA_CLOUD_API_KEY on Vercel (PDF parsing).
  * Optional: APP_URL or NEXT_PUBLIC_APP_URL (default https://greengptadvisory.com)
@@ -32,7 +38,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 const DEFAULT_RAG_DIR = resolve(root, "ehs rag docs");
 const BUCKET = "rag-source";
-const SUPPORTED = new Set(["pdf", "docx", "xlsx", "csv"]);
+const SUPPORTED = new Set(["pdf", "docx", "xlsx", "csv", "md", "txt"]);
+const LIBRARIES = new Set(["regulation", "ehs_guidance", "template"]);
 
 function loadEnvLocal() {
   const path = resolve(root, ".env.local");
@@ -66,6 +73,8 @@ function contentType(ext) {
     docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     csv: "text/csv",
+    md: "text/markdown",
+    txt: "text/plain",
   };
   return map[ext] || "application/octet-stream";
 }
@@ -81,6 +90,8 @@ function parseArgs(argv) {
     org: null,
     facility: null,
     approved: false,
+    library: null,
+    jurisdiction: null,
   };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
@@ -93,8 +104,17 @@ function parseArgs(argv) {
     else if (a === "--org") args.org = argv[++i] || null;
     else if (a === "--facility") args.facility = argv[++i] || null;
     else if (a === "--approved") args.approved = true;
+    else if (a === "--library") args.library = argv[++i] || null;
+    else if (a === "--jurisdiction") args.jurisdiction = argv[++i] || null;
   }
   return args;
+}
+
+function sharedLibraryFor(rel) {
+  if (args.library) return args.library;
+  if (rel.startsWith("EHS Implementation Guideline/")) return "ehs_guidance";
+  if (rel.startsWith("EHS Mandatory Forms/") || rel.startsWith("EHS Suggested Template/")) return "template";
+  return "ehs_guidance";
 }
 
 async function tagClientDocument(supabase, { documentId, org, facility, approved, title, fileType, objectKey }) {
@@ -142,7 +162,7 @@ async function tagClientDocument(supabase, { documentId, org, facility, approved
   if (error) throw new Error(`update workspace document: ${error.message}`);
 }
 
-async function registerDocument(supabase, objectKey) {
+async function registerDocument(supabase, objectKey, catalog = {}) {
   const { data: signed, error: signErr } = await supabase.storage
     .from(BUCKET)
     .createSignedUrl(objectKey, 120);
@@ -179,6 +199,7 @@ async function registerDocument(supabase, objectKey) {
         content_hash,
         status: "pending",
         metadata: {},
+        ...catalog,
       })
       .select("id")
       .single();
@@ -186,10 +207,11 @@ async function registerDocument(supabase, objectKey) {
     documentId = data.id;
   } else {
     documentId = existing.id;
-    if (existing.content_hash !== content_hash) {
+    const changed = existing.content_hash !== content_hash;
+    if (changed || Object.keys(catalog).length) {
       const { error } = await supabase
         .from("documents")
-        .update({ content_hash, status: "pending" })
+        .update({ ...catalog, ...(changed ? { content_hash, status: "pending" } : {}) })
         .eq("id", documentId);
       if (error) throw new Error(`db update: ${error.message}`);
     }
@@ -207,6 +229,14 @@ if (args.facility && !args.org) {
 }
 if (args.org && RAG_DIR === DEFAULT_RAG_DIR) {
   console.error("Client documents need their own --dir; the default folder is the shared library.");
+  process.exit(1);
+}
+if (args.org && (args.library || args.jurisdiction)) {
+  console.error("--library and --jurisdiction apply to the shared library only, not --org client documents.");
+  process.exit(1);
+}
+if (args.library && !LIBRARIES.has(args.library)) {
+  console.error(`--library must be one of: ${[...LIBRARIES].join(", ")}`);
   process.exit(1);
 }
 const appUrl = (
@@ -246,7 +276,9 @@ console.log(`Index API:  ${appUrl}/api/index-now`);
 console.log(
   args.org
     ? `Tenancy:    client org ${args.org}${args.facility ? `, facility ${args.facility}` : ""} (${args.approved ? "approved" : "draft — not searchable until approved"})`
-    : "Tenancy:    shared library (visible to every organization)"
+    : `Tenancy:    shared library (visible to every organization) · library ${args.library ?? "by folder"}${
+        args.jurisdiction ? ` · jurisdiction ${args.jurisdiction}` : ""
+      }`
 );
 console.log(`Total files: ${allFiles.length}`);
 console.log(`Supported for indexing: ${supported.length}`);
@@ -281,7 +313,10 @@ for (const file of toProcess) {
       if (upErr) throw new Error(`upload: ${upErr.message}`);
     }
 
-    const documentId = await registerDocument(supabase, file.objectKey);
+    const catalog = args.org
+      ? {}
+      : { library: sharedLibraryFor(file.rel), ...(args.jurisdiction ? { jurisdiction: args.jurisdiction } : {}) };
+    const documentId = await registerDocument(supabase, file.objectKey, catalog);
     if (args.org) {
       await tagClientDocument(supabase, {
         documentId,

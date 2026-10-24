@@ -1,7 +1,7 @@
 /** Canonical metadata for the Industrial Compliance Agent control specification. */
 
 export const SPEC_ID = "greengpt-industrial-compliance-agent";
-export const SPEC_VERSION = "1.2.0";
+export const SPEC_VERSION = "1.3.0";
 export const SPEC_TITLE = "GreenGPT Industrial Compliance Agent — Technical Control Specification";
 export const SPEC_PATH = "docs/controls/industrial-compliance-agent.md";
 export const SPEC_PUBLIC_PATH = "/controls";
@@ -147,7 +147,7 @@ export const CONFORMANCE_TESTS: ConformanceTestDef[] = [
     name: "retrieval-tenant-isolation",
     control: "Authorization / tenancy",
     requirement:
-      "Retrieval MUST return only the shared library plus the requester's own approved, in-facility client documents.",
+      "Retrieval MUST return only categorized, in-jurisdiction shared documents plus the requester's own approved, in-facility client documents.",
   },
 ];
 

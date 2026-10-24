@@ -1,7 +1,7 @@
 # GreenGPT Industrial Compliance Agent — Technical Control Specification
 
 **Spec ID:** `greengpt-industrial-compliance-agent`  
-**Version:** 1.2.0  
+**Version:** 1.3.0  
 **Status:** Normative for GreenGPT Advisory managed workspace agents  
 **Public surface:** `/controls`  
 **Conformance suite:** `src/lib/workspace/agent/__tests__/conformance.test.ts` (ICA-01–ICA-17)
@@ -141,15 +141,19 @@ The agent **MAY** populate the obligation register only by proposing rows from a
 
 ### 3.6 Retrieval tenancy
 
-The indexed corpus has two tiers: a **shared library** (federal and state rules, EHS reference material) with no organization, and **client documents** tagged with an `organization_id` and optionally a `facility_id`. Retrieval for Ask and for any agent tool **MUST**:
+The indexed corpus has two tiers: a **shared library** with no organization, and **client documents** tagged with an `organization_id` and optionally a `facility_id`. Shared documents carry a `library` category: `regulation` (eCFR and state rules, with a version date), `ehs_guidance`, or `template`. Retrieval for Ask and for any agent tool **MUST**:
 
 - filter by organization inside the search query, so another organization's chunks are never candidates;
+- return a shared document only when it has a `library` category; uncategorized shared documents **MUST NOT** ground answers;
+- return a shared document only when its `jurisdiction` is empty, `federal`, or the selected facility's state;
 - return a client document only to its own organization, and only for its facility when the document is facility-tagged;
 - return a client document only when it is linked to a workspace document with `approval_status = approved`;
 - return only the shared library when the requester has no organization membership;
 - re-check the same rules on the returned rows before they reach the model (ICA-17).
 
 The search function **MUST NOT** be executable by `anon` or `authenticated` roles; only the server may call it.
+
+Ask **MAY** also read the selected facility's profile, linked intake answers, obligation register, open corrective actions, and missing evidence (the **Read** autonomy level). These are loaded for the selected facility only, labeled as workspace records in the answer, and never written.
 
 ---
 
@@ -264,7 +268,7 @@ The following tests are **machine-checkable** and **MUST** remain green in `src/
 | ICA-14 | approved-obligation-lands-draft | Approved obligation persists with `status` and `review_state` `draft` |
 | ICA-15 | duplicate-obligation-rejected | Same facility + citation + requirement as a pending proposal or register row is rejected |
 | ICA-16 | non-applicable-row-not-imported | ARDR rows marked `No` or blank never become proposals |
-| ICA-17 | retrieval-tenant-isolation | Retrieval returns the shared library plus only the requester's own approved, in-facility client documents |
+| ICA-17 | retrieval-tenant-isolation | Retrieval returns only categorized, in-jurisdiction shared documents plus the requester's own approved, in-facility client documents |
 
 ---
 
@@ -280,7 +284,8 @@ How GreenGPT satisfies each control in this repository:
 | Autonomy | Tools in `src/lib/workspace/agent/tools.ts` emit proposals only; apply requires `/workspace/approvals` |
 | Audit | `agent_runs` + `agent_action_events`; UI at `/workspace/audit` |
 | Register population | `src/lib/workspace/ardrImport.ts` parses the ARDR; `import_ardr` tool proposes obligations; upload at `/api/workspace/ardr/import` |
-| Retrieval tenancy | `match_chunks_scoped` SQL function (server-only); row re-check in `src/lib/workspace/agent/retrieval.ts`; ingestion tags organization and facility |
+| Retrieval tenancy | `match_chunks_scoped` SQL function (server-only); row re-check in `src/lib/workspace/agent/retrieval.ts`; ingestion tags organization, facility, library, and jurisdiction; `scripts/sync-ecfr.mjs` maintains federal regulations |
+| Ask context | `src/lib/workspace/askContext.ts` loads the selected facility's profile, intake answers, and register (read-only) |
 | Misuse | Conformance ICA-01–ICA-17; no email tool; proposal caps and duplicate keys |
 | Public contract | This document and `/controls` |
 
@@ -294,7 +299,7 @@ Public marketing **MUST NOT** claim “complete audit trails” or “formal ent
 
 GreenGPT **MAY** claim that:
 
-- agent identity, authorization, revocation, and agent-action audit are defined by this specification at version 1.2.0;
+- agent identity, authorization, revocation, and agent-action audit are defined by this specification at version 1.3.0;
 - consequential agent writes require a named human approval;
 - the named conformance tests ICA-01–ICA-17 are the acceptance criteria.
 

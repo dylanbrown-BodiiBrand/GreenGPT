@@ -96,6 +96,8 @@ export async function POST(req: NextRequest) {
         return errorResponse(502, rid, "sign.xlsx", "SIGNED_URL_FAILED", signErr?.message || "no signed URL");
       }
       units = await parseXLSX(signed.signedUrl, dlog);
+    } else if (ext === "md" || ext === "txt") {
+      units = [bytes.toString("utf8")];
     } else if (ext === "ppt" || ext === "pptx") {
       // current path doesn’t support PPT parsing — recommend exporting to PDF before upload
       return errorResponse(400, rid, "parse", "UNSUPPORTED_PPT", "Upload slides as PDF for now");
@@ -107,7 +109,8 @@ export async function POST(req: NextRequest) {
     if (!units.length) return errorResponse(422, rid, "parse.done", "NO_UNITS", "Parser returned no text");
 
     // ---- chunk (and hard-crop oversized chunks)
-    const chunksRaw = units.flatMap((u) => chunkMarkdown(u, 900, 80));
+    // ~400 tokens (~1600 chars) keeps chunks under HARD_MAX_CHARS_PER_CHUNK instead of trimming them.
+    const chunksRaw = units.flatMap((u) => chunkMarkdown(u, 400, 60));
     const chunks = chunksRaw.map((c, i) => {
       if (c.length <= HARD_MAX_CHARS_PER_CHUNK) return c;
       dlog("chunk.trim", "oversized chunk trimmed", { idx: i, chars: c.length });
