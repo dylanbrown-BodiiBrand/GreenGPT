@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 import { makeLogger, errorResponse } from "@/utils/debug";
 import { assertInternalSecret, internalSecretHeaders } from "@/lib/auth/requireInternalSecret";
+import { tagClientDocument } from "@/lib/workspace/documentTenancy";
 
 // Server-only: needs storage signed URLs and metadata updates; use service role.
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -22,6 +23,13 @@ export async function POST(req: NextRequest) {
     }
     const { objectKey } = parsed;
     if (!objectKey) return errorResponse(400, rid, "validate", "MISSING_OBJECT_KEY", "objectKey required");
+    const organizationId =
+      typeof parsed.organizationId === "string" && parsed.organizationId.trim() ? parsed.organizationId.trim() : null;
+    const facilityId =
+      typeof parsed.facilityId === "string" && parsed.facilityId.trim() ? parsed.facilityId.trim() : null;
+    if (facilityId && !organizationId) {
+      return errorResponse(400, rid, "validate", "FACILITY_WITHOUT_ORG", "facilityId requires organizationId");
+    }
 
     dlog("sign", "Create signed URL (hashing)", { objectKey });
     const { data: signed, error: signErr } = await supabase.storage.from("rag-source").createSignedUrl(objectKey, 120);
@@ -62,6 +70,23 @@ export async function POST(req: NextRequest) {
         if (error) return errorResponse(500, rid, "db.update", "UPDATE_FAILED", error.message);
       } else {
         dlog("db.update", "Content unchanged");
+      }
+    }
+
+    if (organizationId) {
+      dlog("tenancy", "Tag client document", { organizationId, facilityId, approved: parsed.approved === true });
+      try {
+        await tagClientDocument(supabase, {
+          documentId,
+          organizationId,
+          facilityId,
+          title: filename.replace(/\.[^.]+$/, ""),
+          fileType: file_type,
+          objectKey,
+          approved: parsed.approved === true,
+        });
+      } catch (e: any) {
+        return errorResponse(400, rid, "tenancy", "TAG_FAILED", e?.message || "Unable to tag document");
       }
     }
 

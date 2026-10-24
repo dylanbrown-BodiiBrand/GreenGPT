@@ -82,9 +82,11 @@ export async function POST(req: NextRequest) {
       ? Math.min(Number(payload.k), MAX_MATCHES)
       : MAX_MATCHES;
 
-    const { data: hits, error } = await supabase.rpc("match_chunks", {
+    const { data: hits, error } = await supabase.rpc("match_chunks_scoped", {
       query_embedding: qvec,
       match_count: requestedK,
+      filter_org: organizationId,
+      filter_facility: facilityId,
     });
     if (error) {
       return errorResponse(500, rid, "retrieve", "VECTOR_RPC_FAILED", error.message);
@@ -92,44 +94,33 @@ export async function POST(req: NextRequest) {
 
     type Hit = {
       document_id: string;
+      filename: string | null;
+      organization_id: string | null;
+      facility_id: string | null;
+      approved: boolean | null;
       content: string;
       score?: number;
       page_or_sheet?: string;
       section_path?: string;
     };
-    let scored: Hit[] = (hits || []).filter(
-      (h: { score?: number; content?: string; document_id?: string }): h is Hit =>
+    const candidates: Hit[] = ((hits ?? []) as Hit[]).filter(
+      (h) =>
         Boolean(h?.document_id && h?.content) &&
         (typeof h.score !== "number" || h.score >= MIN_SOURCE_SCORE)
     );
-
-    const ids = Array.from(new Set(scored.map((h: { document_id: string }) => h.document_id)));
-    const docMeta = new Map<string, { filename: string }>();
-    const tenantDocs: { id: string; organization_id?: string | null; facility_id?: string | null }[] = [];
-    if (ids.length) {
-      const withTenant = await supabase
-        .from("documents")
-        .select("id, filename, organization_id, facility_id")
-        .in("id", ids);
-      const docs = withTenant.error
-        ? (await supabase.from("documents").select("id, filename").in("id", ids)).data
-        : withTenant.data;
-      for (const d of docs ?? []) {
-        docMeta.set(d.id, { filename: d.filename });
-        tenantDocs.push({
-          id: d.id,
-          organization_id: "organization_id" in d ? (d.organization_id as string | null) : null,
-          facility_id: "facility_id" in d ? (d.facility_id as string | null) : null,
-        });
-      }
-    }
-
-    if (organizationId) {
-      scored = filterChunksForTenant(scored, tenantDocs, { organizationId, facilityId });
-    }
+    const scored = filterChunksForTenant(
+      candidates,
+      candidates.map((h) => ({
+        id: h.document_id,
+        organization_id: h.organization_id,
+        facility_id: h.facility_id,
+        approved: h.approved,
+      })),
+      { organizationId, facilityId }
+    );
 
     let usedTokens = 0;
-    const selected: { h: { document_id: string; score?: number; content: string; page_or_sheet?: string; section_path?: string }; block: string }[] = [];
+    const selected: { h: Hit; block: string }[] = [];
 
     for (const [i, h] of scored.entries()) {
       let content = String(h.content);
@@ -145,7 +136,7 @@ export async function POST(req: NextRequest) {
 
     const sources = selected.map(({ h }) => ({
       documentId: h.document_id,
-      filename: docMeta.get(h.document_id)?.filename || "Approved document",
+      filename: h.filename || "Approved document",
       score: typeof h.score === "number" ? h.score : undefined,
     }));
 

@@ -112,6 +112,7 @@ describe("ICA conformance suite", () => {
       "ICA-14",
       "ICA-15",
       "ICA-16",
+      "ICA-17",
     ]);
   });
 
@@ -577,14 +578,31 @@ describe("ICA conformance suite", () => {
     expect(executed.proposals.map((p) => p.payload.title).sort()).toEqual(["Applies", "Unsure"]);
   });
 
-  it("filters retrieval hits across tenants", () => {
-    const hits = [{ document_id: "shared" }, { document_id: "ours" }, { document_id: "theirs" }];
+  it("ICA-17 retrieval-tenant-isolation", () => {
     const docs = [
-      { id: "shared", organization_id: null, facility_id: null },
-      { id: "ours", organization_id: "org-1", facility_id: "fac-1" },
-      { id: "theirs", organization_id: "org-2", facility_id: "fac-9" },
+      { id: "shared", organization_id: null, facility_id: null, approved: null },
+      { id: "ours", organization_id: "org-1", facility_id: "fac-1", approved: true },
+      { id: "ours-org-wide", organization_id: "org-1", facility_id: null, approved: true },
+      { id: "ours-unapproved", organization_id: "org-1", facility_id: "fac-1", approved: false },
+      { id: "ours-other-facility", organization_id: "org-1", facility_id: "fac-2", approved: true },
+      { id: "theirs", organization_id: "org-2", facility_id: "fac-9", approved: true },
     ];
-    const filtered = filterChunksForTenant(hits, docs, { organizationId: "org-1", facilityId: "fac-1" });
-    expect(filtered.map((h) => h.document_id).sort()).toEqual(["ours", "shared"]);
+    const hits = docs.map((d) => ({ document_id: d.id }));
+    const ids = (scope: { organizationId: string | null; facilityId: string | null }) =>
+      filterChunksForTenant(hits, docs, scope)
+        .map((h) => h.document_id)
+        .sort();
+
+    expect(ids({ organizationId: "org-1", facilityId: "fac-1" })).toEqual(["ours", "ours-org-wide", "shared"]);
+    expect(ids({ organizationId: "org-1", facilityId: null })).toEqual([
+      "ours",
+      "ours-org-wide",
+      "ours-other-facility",
+      "shared",
+    ]);
+    expect(ids({ organizationId: null, facilityId: null })).toEqual(["shared"]);
+    expect(filterChunksForTenant([{ document_id: "unknown" }], docs, { organizationId: "org-1", facilityId: null })).toEqual(
+      []
+    );
   });
 });

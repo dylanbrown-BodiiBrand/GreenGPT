@@ -11,7 +11,14 @@
  *   node scripts/ingest-ehs-rag.mjs --index --filter "permit to work"
  *   node scripts/ingest-ehs-rag.mjs --index --skip-upload
  *
- * Env (from .env.local): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+ * Client documents (never mix into the shared library):
+ *   node scripts/ingest-ehs-rag.mjs --index --dir "client docs/acme" --org <org-uuid> [--facility <facility-uuid>] [--approved]
+ *   --org      tags documents to one client organization (stored under orgs/<org>/ in rag-source)
+ *   --facility limits them to one facility in that organization
+ *   --approved marks them client-approved so they can ground answers; otherwise they stay draft
+ *   Without --org, files go to the shared library (federal/state rules, EHS reference material).
+ *
+ * Env (from .env.local): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET
  * Production indexing also needs LLAMA_CLOUD_API_KEY on Vercel (PDF parsing).
  * Optional: APP_URL or NEXT_PUBLIC_APP_URL (default https://greengptadvisory.com)
  */
@@ -23,7 +30,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
-const RAG_DIR = resolve(root, "ehs rag docs");
+const DEFAULT_RAG_DIR = resolve(root, "ehs rag docs");
 const BUCKET = "rag-source";
 const SUPPORTED = new Set(["pdf", "docx", "xlsx", "csv"]);
 
@@ -64,7 +71,17 @@ function contentType(ext) {
 }
 
 function parseArgs(argv) {
-  const args = { index: false, skipUpload: false, local: false, limit: Infinity, filter: null };
+  const args = {
+    index: false,
+    skipUpload: false,
+    local: false,
+    limit: Infinity,
+    filter: null,
+    dir: null,
+    org: null,
+    facility: null,
+    approved: false,
+  };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--index") args.index = true;
@@ -72,8 +89,57 @@ function parseArgs(argv) {
     else if (a === "--local") args.local = true;
     else if (a === "--limit") args.limit = Number(argv[++i]) || 1;
     else if (a === "--filter") args.filter = (argv[++i] || "").toLowerCase();
+    else if (a === "--dir") args.dir = argv[++i] || null;
+    else if (a === "--org") args.org = argv[++i] || null;
+    else if (a === "--facility") args.facility = argv[++i] || null;
+    else if (a === "--approved") args.approved = true;
   }
   return args;
+}
+
+async function tagClientDocument(supabase, { documentId, org, facility, approved, title, fileType, objectKey }) {
+  if (facility) {
+    const { data, error } = await supabase.from("facilities").select("organization_id").eq("id", facility).maybeSingle();
+    if (error || !data) throw new Error("facility not found");
+    if (data.organization_id !== org) throw new Error("facility does not belong to --org");
+  }
+  const { error: tagErr } = await supabase
+    .from("documents")
+    .update({ organization_id: org, facility_id: facility })
+    .eq("id", documentId);
+  if (tagErr) throw new Error(`tag document: ${tagErr.message}`);
+
+  const { data: link, error: linkErr } = await supabase
+    .from("workspace_documents")
+    .select("id, approval_status")
+    .eq("rag_document_id", documentId)
+    .maybeSingle();
+  if (linkErr) throw new Error(`read workspace document: ${linkErr.message}`);
+
+  if (!link) {
+    const { error } = await supabase.from("workspace_documents").insert({
+      organization_id: org,
+      facility_id: facility,
+      title,
+      doc_type: fileType || null,
+      approval_status: approved ? "approved" : "draft",
+      source_uri: objectKey,
+      rag_document_id: documentId,
+      notes: approved ? "Client-approved at ingestion." : "Indexed; must be approved before it can ground answers.",
+    });
+    if (error) throw new Error(`link workspace document: ${error.message}`);
+    return;
+  }
+  const { error } = await supabase
+    .from("workspace_documents")
+    .update({
+      organization_id: org,
+      facility_id: facility,
+      ...(approved && link.approval_status !== "approved" ? { approval_status: "approved" } : {}),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", link.id);
+  if (error) throw new Error(`update workspace document: ${error.message}`);
 }
 
 async function registerDocument(supabase, objectKey) {
@@ -134,6 +200,15 @@ async function registerDocument(supabase, objectKey) {
 loadEnvLocal();
 
 const args = parseArgs(process.argv);
+const RAG_DIR = args.dir ? resolve(root, args.dir) : DEFAULT_RAG_DIR;
+if (args.facility && !args.org) {
+  console.error("--facility requires --org");
+  process.exit(1);
+}
+if (args.org && RAG_DIR === DEFAULT_RAG_DIR) {
+  console.error("Client documents need their own --dir; the default folder is the shared library.");
+  process.exit(1);
+}
 const appUrl = (
   args.local
     ? "http://localhost:3000"
@@ -156,7 +231,7 @@ const allFiles = walkFiles(RAG_DIR);
 let candidates = allFiles.map((full) => {
   const rel = relative(RAG_DIR, full).replace(/\\/g, "/");
   const ext = (rel.split(".").pop() || "").toLowerCase();
-  return { full, rel, ext, objectKey: rel };
+  return { full, rel, ext, objectKey: args.org ? `orgs/${args.org}/${rel}` : rel };
 });
 
 if (args.filter) {
@@ -168,6 +243,11 @@ const skipped = candidates.filter((f) => !SUPPORTED.has(f.ext));
 
 console.log(`RAG folder: ${RAG_DIR}`);
 console.log(`Index API:  ${appUrl}/api/index-now`);
+console.log(
+  args.org
+    ? `Tenancy:    client org ${args.org}${args.facility ? `, facility ${args.facility}` : ""} (${args.approved ? "approved" : "draft — not searchable until approved"})`
+    : "Tenancy:    shared library (visible to every organization)"
+);
 console.log(`Total files: ${allFiles.length}`);
 console.log(`Supported for indexing: ${supported.length}`);
 if (skipped.length) {
@@ -202,10 +282,24 @@ for (const file of toProcess) {
     }
 
     const documentId = await registerDocument(supabase, file.objectKey);
+    if (args.org) {
+      await tagClientDocument(supabase, {
+        documentId,
+        org: args.org,
+        facility: args.facility,
+        approved: args.approved,
+        title: file.rel.split("/").pop().replace(/\.[^.]+$/, ""),
+        fileType: file.ext,
+        objectKey: file.objectKey,
+      });
+    }
 
     const res = await fetch(`${appUrl}/api/index-now`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(process.env.CRON_SECRET ? { Authorization: `Bearer ${process.env.CRON_SECRET}` } : {}),
+      },
       body: JSON.stringify({ documentId }),
     });
     const text = await res.text();

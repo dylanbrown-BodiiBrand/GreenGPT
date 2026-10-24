@@ -1,7 +1,7 @@
 /** Canonical metadata for the Industrial Compliance Agent control specification. */
 
 export const SPEC_ID = "greengpt-industrial-compliance-agent";
-export const SPEC_VERSION = "1.1.0";
+export const SPEC_VERSION = "1.2.0";
 export const SPEC_TITLE = "GreenGPT Industrial Compliance Agent — Technical Control Specification";
 export const SPEC_PATH = "docs/controls/industrial-compliance-agent.md";
 export const SPEC_PUBLIC_PATH = "/controls";
@@ -32,7 +32,8 @@ export type ConformanceTestId =
   | "ICA-13"
   | "ICA-14"
   | "ICA-15"
-  | "ICA-16";
+  | "ICA-16"
+  | "ICA-17";
 
 export type ConformanceTestDef = {
   id: ConformanceTestId;
@@ -141,6 +142,13 @@ export const CONFORMANCE_TESTS: ConformanceTestDef[] = [
     control: "Register population",
     requirement: "ARDR rows marked No or left blank in Applies? MUST NOT become proposals.",
   },
+  {
+    id: "ICA-17",
+    name: "retrieval-tenant-isolation",
+    control: "Authorization / tenancy",
+    requirement:
+      "Retrieval MUST return only the shared library plus the requester's own approved, in-facility client documents.",
+  },
 ];
 
 export const IMPLEMENTED_CONTROLS = [
@@ -149,5 +157,6 @@ export const IMPLEMENTED_CONTROLS = [
   "Approval-gated tools: identify deadlines, propose tasks, prepare records",
   "Approval-gated register population from a human-completed ARDR worksheet",
   "Append-only agent action ledger with dual-actor apply events",
-  "Named Vitest conformance suite ICA-01 through ICA-16",
+  "Organization-filtered retrieval: client documents reach only their own organization, and only once approved",
+  "Named Vitest conformance suite ICA-01 through ICA-17",
 ] as const;
