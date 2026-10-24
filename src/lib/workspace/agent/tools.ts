@@ -1,12 +1,21 @@
 import { defaultInspectionChecklist, buildBriefingContent } from "../briefingBuilder";
+import type { ArdrImportRow } from "../ardrImport";
 import type { CorrectiveActionRow, EvidenceItemRow, ObligationRow } from "../types";
-import { MAX_PROPOSALS_PER_RUN, type AgentCapability, type ProposalKind, type ProposedChange, type SupportingSource } from "./types";
-import { assertPayloadNotConsequentialWrite, forceDraftPayload } from "./authorization";
+import {
+  MAX_PROPOSALS_PER_RUN,
+  MAX_REGISTER_PROPOSALS_PER_RUN,
+  type AgentCapability,
+  type ProposalKind,
+  type ProposedChange,
+  type SupportingSource,
+} from "./types";
+import { assertPayloadNotConsequentialWrite, assertProposalGrounded, forceDraftPayload } from "./authorization";
 
 export type ToolName =
   | "identify_deadlines"
   | "propose_tasks"
   | "prepare_records"
+  | "import_ardr"
   | "search_approved_corpus";
 
 export type PlannedProposal = {
@@ -30,17 +39,24 @@ export type ToolContext = {
   evidence: EvidenceItemRow[];
   pendingDedupeKeys: string[];
   now: string;
+  ardrRows?: ArdrImportRow[];
+  ardrFilename?: string;
 };
 
 const TOOL_CAPABILITY: Record<Exclude<ToolName, "search_approved_corpus">, AgentCapability> = {
   identify_deadlines: "identify_deadlines",
   propose_tasks: "propose_tasks",
   prepare_records: "prepare_records",
+  import_ardr: "populate_register",
 };
 
 export function capabilityForTool(tool: ToolName): AgentCapability | null {
   if (tool === "search_approved_corpus") return null;
   return TOOL_CAPABILITY[tool];
+}
+
+export function proposalCapForTool(tool: ToolName): number {
+  return tool === "import_ardr" ? MAX_REGISTER_PROPOSALS_PER_RUN : MAX_PROPOSALS_PER_RUN;
 }
 
 function daysFromNow(isoDate: string, now: string): number {
@@ -258,9 +274,92 @@ export function planPrepareRecords(ctx: ToolContext): PlannedProposal[] {
   return plans.slice(0, MAX_PROPOSALS_PER_RUN);
 }
 
+const normalizeKey = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+
+export function obligationDedupeKey(facilityId: string, citation: string, requirement: string): string {
+  return `obligation:${facilityId}:${normalizeKey(citation)}:${normalizeKey(requirement)}`;
+}
+
+function jurisdictionFromCitation(citation: string): string | null {
+  if (/\bCFR\b|U\.S\.C\./i.test(citation)) return "Federal";
+  if (/state|local|N\.J\.A\.C\.|permit/i.test(citation)) return "State / local";
+  return null;
+}
+
+/** Propose register rows only for ARDR rows a human marked Yes or TBD for this facility. */
+export function planImportArdr(ctx: ToolContext): PlannedProposal[] {
+  const facilityId = ctx.facilityId;
+  if (!facilityId || !ctx.ardrRows?.length) return [];
+
+  const existing = new Set(
+    ctx.obligations
+      .filter((o) => o.facility_id === facilityId)
+      .map((o) => obligationDedupeKey(facilityId, o.source_citation ?? "", o.title))
+  );
+  const filename = ctx.ardrFilename?.trim() || "ARDR worksheet";
+  const plans: PlannedProposal[] = [];
+
+  for (const row of ctx.ardrRows) {
+    if (plans.length >= MAX_REGISTER_PROPOSALS_PER_RUN) break;
+    if (row.applies !== "yes" && row.applies !== "tbd") continue;
+    const dedupeKey = obligationDedupeKey(facilityId, row.citation, row.requirement);
+    if (existing.has(dedupeKey) || ctx.pendingDedupeKeys.includes(dedupeKey)) continue;
+    if (plans.some((p) => p.dedupeKey === dedupeKey)) continue;
+
+    const isoDue = /^\d{4}-\d{2}-\d{2}/.test(row.nextActionDue) ? row.nextActionDue.slice(0, 10) : null;
+    const notes = [
+      `Imported from ARDR (${row.sheet} · ${row.programTopic || "General"}); Applies? ${row.applies === "yes" ? "Yes" : "TBD"}.`,
+      !isoDue && row.nextActionDue ? `Next action: ${row.nextActionDue}.` : "",
+      row.notes,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const supportingSources: SupportingSource[] = [
+      {
+        filename,
+        citation: row.citation || undefined,
+        excerpt: `${row.sheet} row ${row.rowNumber}: ${row.requirement}`,
+      },
+    ];
+    const payload = forceDraftPayload({
+      facilityId,
+      title: row.requirement,
+      sourceDocument: row.referenceDocuments || filename,
+      sourceCitation: row.citation,
+      jurisdiction: jurisdictionFromCitation(row.citation),
+      frequency: row.frequency || null,
+      ownerName: row.owner || null,
+      evidenceRequired: row.implementation || null,
+      nextDueAt: isoDue,
+      applies: row.applies,
+      notes,
+      status: "draft",
+      review_state: "draft",
+    });
+    if (!assertPayloadNotConsequentialWrite(payload).ok) continue;
+    if (!assertProposalGrounded("obligation", payload, supportingSources).ok) continue;
+
+    plans.push({
+      kind: "obligation",
+      capability: "populate_register",
+      facilityId,
+      dedupeKey,
+      payload,
+      proposedChange: {
+        before: null,
+        after: { title: row.requirement, citation: row.citation, applies: row.applies, review_state: "draft" },
+      },
+      supportingSources,
+      toolName: "import_ardr",
+    });
+  }
+  return plans;
+}
+
 export function planTool(tool: ToolName, ctx: ToolContext): PlannedProposal[] {
   if (tool === "identify_deadlines") return planIdentifyDeadlines(ctx);
   if (tool === "propose_tasks") return planProposeTasks(ctx);
   if (tool === "prepare_records") return planPrepareRecords(ctx);
+  if (tool === "import_ardr") return planImportArdr(ctx);
   return [];
 }

@@ -1,10 +1,10 @@
 # GreenGPT Industrial Compliance Agent — Technical Control Specification
 
 **Spec ID:** `greengpt-industrial-compliance-agent`  
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Status:** Normative for GreenGPT Advisory managed workspace agents  
 **Public surface:** `/controls`  
-**Conformance suite:** `src/lib/workspace/agent/__tests__/conformance.test.ts` (ICA-01–ICA-12)
+**Conformance suite:** `src/lib/workspace/agent/__tests__/conformance.test.ts` (ICA-01–ICA-16)
 
 Language in this document uses RFC 2119 keywords: **MUST**, **MUST NOT**, **SHOULD**, **MAY**.
 
@@ -19,6 +19,7 @@ This specification defines identity, authorization, revocation, autonomy, and au
 The agent exists to:
 
 - identify compliance deadlines from the facility obligation register;
+- propose obligation register rows from a human-completed ARDR worksheet;
 - propose corrective-action tasks;
 - prepare draft records (inspection prep, monthly briefing);
 - request human approval before any consequential write.
@@ -95,6 +96,7 @@ An agent **MAY** be granted only these capabilities:
 | `identify_deadlines` | Read obligations and emit deadline-alert **proposals** |
 | `propose_tasks` | Draft corrective-action **proposals** |
 | `prepare_records` | Draft inspection-prep and briefing **proposals** |
+| `populate_register` | Draft obligation **proposals** from a human-completed ARDR worksheet (§3.5) |
 | `request_approval` | Place proposals on the human approval queue |
 
 A missing grant **MUST** fail closed.
@@ -119,13 +121,23 @@ Humans **MAY** trigger a run. Triggering a run is not approval of the run’s pr
 
 An agent **MUST NOT**:
 
-- set `review_state` to `approved`;
+- set `review_state` to `approved`, or set an obligation `status` to `approved` or `completed`;
 - close a corrective action;
-- change regulatory applicability;
+- set or change regulatory applicability (applicability comes only from the human-completed ARDR `Applies?` column; §3.5);
 - send email or any external communication;
 - write across facilities or organizations;
 - approve its own proposal;
 - persist a consequential record except via an approved proposal apply path.
+
+### 3.5 Register population
+
+The agent **MAY** populate the obligation register only by proposing rows from an ARDR worksheet that a human uploaded for a single facility. The control plane **MUST**:
+
+- propose only rows whose `Applies?` is `Yes` or `TBD`; rows marked `No` or left blank **MUST NOT** become proposals (ICA-16). They remain documented in the ARDR file;
+- refuse an obligation proposal that has no citation or no ARDR source row (ICA-13);
+- persist an approved obligation with `status` and `review_state` both `draft` (ICA-14). Approval by a named human accepts the row into the register; it does not approve the obligation;
+- reject a proposal that duplicates a pending proposal or an existing register row for the same facility, citation, and requirement (ICA-15);
+- bound each import run to a fixed maximum number of proposals.
 
 ---
 
@@ -210,6 +222,9 @@ Members of the organization **MUST** be able to read the agent ledger in `/works
 | M-08 | Human rubber-stamps without sources or diff | Approval UI **MUST** show sources and diff; ledger **MUST** store them; incomplete events fail ICA-10 |
 | M-09 | Agent sends email or regulator-facing output | No send-email tool; external communication capability does not exist |
 | M-10 | Shared job secret used as agent identity | `shared_secret` actor kind **MUST** be rejected (ICA-11) |
+| M-11 | Agent invents obligations without a regulatory basis | Obligation proposals without citation and ARDR source are refused (ICA-13) |
+| M-12 | Agent imports requirements the client marked not applicable | `No` and blank `Applies?` rows never become proposals (ICA-16) |
+| M-13 | Repeated imports flood the register | Duplicate facility + citation + requirement is rejected (ICA-15); per-run cap |
 
 ---
 
@@ -231,6 +246,10 @@ The following tests are **machine-checkable** and **MUST** remain green in `src/
 | ICA-10 | audit-completeness | Event missing tools or supporting information fails |
 | ICA-11 | shared-secret-is-not-an-agent | `CRON_SECRET` / shared_secret is not an agent |
 | ICA-12 | unbounded-proposal-loop-blocked | Duplicate pending proposal for same finding+facility is rejected |
+| ICA-13 | unsourced-obligation-refused | Obligation proposal without citation or ARDR source is refused |
+| ICA-14 | approved-obligation-lands-draft | Approved obligation persists with `status` and `review_state` `draft` |
+| ICA-15 | duplicate-obligation-rejected | Same facility + citation + requirement as a pending proposal or register row is rejected |
+| ICA-16 | non-applicable-row-not-imported | ARDR rows marked `No` or blank never become proposals |
 
 ---
 
@@ -245,7 +264,8 @@ How GreenGPT satisfies each control in this repository:
 | Revocation | `revokeAgent` sets status, cancels in-flight runs, appends a ledger event |
 | Autonomy | Tools in `src/lib/workspace/agent/tools.ts` emit proposals only; apply requires `/workspace/approvals` |
 | Audit | `agent_runs` + `agent_action_events`; UI at `/workspace/audit` |
-| Misuse | Conformance ICA-01–ICA-12; no email tool; proposal cap and duplicate keys |
+| Register population | `src/lib/workspace/ardrImport.ts` parses the ARDR; `import_ardr` tool proposes obligations; upload at `/api/workspace/ardr/import` |
+| Misuse | Conformance ICA-01–ICA-16; no email tool; proposal caps and duplicate keys |
 | Public contract | This document and `/controls` |
 
 Shared cron authentication remains an **internal job secret** until a later phase replaces it with a named internal agent. It **MUST NOT** be presented as the compliance agent.
@@ -258,8 +278,8 @@ Public marketing **MUST NOT** claim “complete audit trails” or “formal ent
 
 GreenGPT **MAY** claim that:
 
-- agent identity, authorization, revocation, and agent-action audit are defined by this specification at version 1.0.0;
+- agent identity, authorization, revocation, and agent-action audit are defined by this specification at version 1.1.0;
 - consequential agent writes require a named human approval;
-- the named conformance tests ICA-01–ICA-12 are the acceptance criteria.
+- the named conformance tests ICA-01–ICA-16 are the acceptance criteria.
 
 Dedicated instances and additional isolation remain engagement-specific configuration.

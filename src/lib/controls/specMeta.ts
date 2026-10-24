@@ -1,7 +1,7 @@
 /** Canonical metadata for the Industrial Compliance Agent control specification. */
 
 export const SPEC_ID = "greengpt-industrial-compliance-agent";
-export const SPEC_VERSION = "1.0.0";
+export const SPEC_VERSION = "1.1.0";
 export const SPEC_TITLE = "GreenGPT Industrial Compliance Agent — Technical Control Specification";
 export const SPEC_PATH = "docs/controls/industrial-compliance-agent.md";
 export const SPEC_PUBLIC_PATH = "/controls";
@@ -10,6 +10,7 @@ export const AGENT_CAPABILITIES = [
   "identify_deadlines",
   "propose_tasks",
   "prepare_records",
+  "populate_register",
   "request_approval",
 ] as const;
 
@@ -27,7 +28,11 @@ export type ConformanceTestId =
   | "ICA-09"
   | "ICA-10"
   | "ICA-11"
-  | "ICA-12";
+  | "ICA-12"
+  | "ICA-13"
+  | "ICA-14"
+  | "ICA-15"
+  | "ICA-16";
 
 export type ConformanceTestDef = {
   id: ConformanceTestId;
@@ -111,12 +116,38 @@ export const CONFORMANCE_TESTS: ConformanceTestDef[] = [
     control: "Misuse",
     requirement: "Duplicate pending proposals for the same finding and facility MUST be rejected.",
   },
+  {
+    id: "ICA-13",
+    name: "unsourced-obligation-refused",
+    control: "Register population",
+    requirement: "An obligation proposal without a citation or ARDR source row MUST be refused.",
+  },
+  {
+    id: "ICA-14",
+    name: "approved-obligation-lands-draft",
+    control: "Autonomy boundary",
+    requirement: "An approved obligation proposal MUST persist with status and review_state draft.",
+  },
+  {
+    id: "ICA-15",
+    name: "duplicate-obligation-rejected",
+    control: "Misuse",
+    requirement:
+      "An obligation matching a pending proposal or register row for the same facility, citation, and requirement MUST be rejected.",
+  },
+  {
+    id: "ICA-16",
+    name: "non-applicable-row-not-imported",
+    control: "Register population",
+    requirement: "ARDR rows marked No or left blank in Applies? MUST NOT become proposals.",
+  },
 ];
 
 export const IMPLEMENTED_CONTROLS = [
   "First-class agent identity with scoped, revocable grants",
   "Human job functions: EHS manager, facility administrator, employee",
   "Approval-gated tools: identify deadlines, propose tasks, prepare records",
+  "Approval-gated register population from a human-completed ARDR worksheet",
   "Append-only agent action ledger with dual-actor apply events",
-  "Named Vitest conformance suite ICA-01 through ICA-12",
+  "Named Vitest conformance suite ICA-01 through ICA-16",
 ] as const;

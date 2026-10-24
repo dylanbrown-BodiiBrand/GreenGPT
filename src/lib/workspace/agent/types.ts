@@ -8,6 +8,7 @@ export type AgentCapability =
   | "identify_deadlines"
   | "propose_tasks"
   | "prepare_records"
+  | "populate_register"
   | "request_approval";
 
 export type ActorKind = "human" | "agent" | "shared_secret";
@@ -16,7 +17,7 @@ export type AgentRunStatus = "running" | "awaiting_approval" | "completed" | "ca
 
 export type ApprovalStatus = "pending" | "approved" | "denied" | "expired" | "not_required";
 
-export type ProposalKind = "corrective_action" | "inspection_prep" | "briefing" | "deadline_alert";
+export type ProposalKind = "corrective_action" | "inspection_prep" | "briefing" | "deadline_alert" | "obligation";
 
 export type SupportingSource = {
   documentId?: string;
@@ -126,14 +127,19 @@ export const DEFAULT_CAPABILITIES: AgentCapability[] = [
   "identify_deadlines",
   "propose_tasks",
   "prepare_records",
+  "populate_register",
   "request_approval",
 ];
 
 export const MAX_PROPOSALS_PER_RUN = 10;
 
+/** ARDR imports seed a whole facility register in one run, so they get a larger fixed bound. */
+export const MAX_REGISTER_PROPOSALS_PER_RUN = 200;
+
 export const ALL_CAPABILITIES: AgentCapability[] = [
   "identify_deadlines",
   "propose_tasks",
   "prepare_records",
+  "populate_register",
   "request_approval",
 ];

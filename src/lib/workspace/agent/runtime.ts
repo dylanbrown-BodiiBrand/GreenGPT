@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ArdrImportRow } from "../ardrImport";
 import { defaultInspectionChecklist } from "../briefingBuilder";
 import type { CorrectiveActionRow, EvidenceItemRow, ObligationRow } from "../types";
 import {
@@ -6,6 +7,7 @@ import {
   assertCanUseTool,
   assertHumanCanApprove,
   assertPayloadNotConsequentialWrite,
+  assertProposalGrounded,
   deny,
   forceDraftPayload,
 } from "./authorization";
@@ -19,9 +21,8 @@ import {
   listPendingDedupeKeys,
   updateRunStatus,
 } from "./persist";
-import { capabilityForTool, planTool, type ToolName } from "./tools";
+import { capabilityForTool, planTool, proposalCapForTool, type ToolName } from "./tools";
 import type { AgentPrincipal, AgentProposal, AuthzResult, HumanPrincipal } from "./types";
-import { MAX_PROPOSALS_PER_RUN } from "./types";
 
 const RUN_TOOLS: ToolName[] = ["identify_deadlines", "propose_tasks", "prepare_records"];
 
@@ -38,7 +39,7 @@ export async function loadToolContext(
       "id, organization_id, facility_id, title, source_document, source_citation, jurisdiction, frequency, owner_name, evidence_required, status, review_state, next_due_at, notes"
     )
     .eq("organization_id", organizationId)
-    .limit(50);
+    .limit(500);
   if (facilityId) obligationsQuery = obligationsQuery.eq("facility_id", facilityId);
 
   let actionsQuery = supabase
@@ -86,6 +87,8 @@ export async function executeAgentRun(input: {
   trigger: string;
   tools?: ToolName[];
   agent?: AgentPrincipal | null;
+  ardrRows?: ArdrImportRow[];
+  ardrFilename?: string;
 }): Promise<{ result: AuthzResult; runId?: string; proposalCount?: number }> {
   const agent = input.agent ?? (await getActiveAgent(input.supabase, input.organizationId));
   const start = assertCanStartRun({
@@ -135,12 +138,16 @@ export async function executeAgentRun(input: {
       ...ctx,
       pendingDedupeKeys: pendingKeys,
       now: new Date().toISOString(),
+      ardrRows: input.ardrRows,
+      ardrFilename: input.ardrFilename,
     });
 
+    let createdForTool = 0;
     for (const item of planned) {
-      if (created >= MAX_PROPOSALS_PER_RUN) break;
+      if (createdForTool >= proposalCapForTool(tool)) break;
       const payloadCheck = assertPayloadNotConsequentialWrite(item.payload);
       if (!payloadCheck.ok) continue;
+      if (!assertProposalGrounded(item.kind, item.payload, item.supportingSources).ok) continue;
       if (pendingKeys.includes(item.dedupeKey)) continue;
       try {
         const proposal = await insertProposal(input.supabase, {
@@ -157,6 +164,7 @@ export async function executeAgentRun(input: {
         });
         pendingKeys.push(item.dedupeKey);
         created += 1;
+        createdForTool += 1;
         await insertActionEvent(input.supabase, {
           organizationId: input.organizationId,
           runId: run.id,
@@ -215,6 +223,32 @@ export async function applyApprovedProposal(input: {
       .single();
     if (error || !data) throw new Error("Unable to apply corrective action proposal.");
     return { entityType: "corrective_action", entityIds: [data.id as string] };
+  }
+
+  if (input.proposal.kind === "obligation") {
+    const text = (key: string) =>
+      typeof payload[key] === "string" && (payload[key] as string).trim() ? (payload[key] as string) : null;
+    const { data, error } = await input.supabase
+      .from("obligations")
+      .insert({
+        organization_id: input.proposal.organizationId,
+        facility_id: facilityId,
+        title: text("title") ?? "Agent-proposed obligation",
+        source_document: text("sourceDocument"),
+        source_citation: text("sourceCitation"),
+        jurisdiction: text("jurisdiction"),
+        frequency: text("frequency"),
+        owner_name: text("ownerName"),
+        evidence_required: text("evidenceRequired"),
+        next_due_at: text("nextDueAt"),
+        notes: text("notes"),
+        status: "draft",
+        review_state: "draft",
+      })
+      .select("id")
+      .single();
+    if (error || !data) throw new Error("Unable to apply obligation proposal.");
+    return { entityType: "obligation", entityIds: [data.id as string] };
   }
 
   if (input.proposal.kind === "inspection_prep") {

@@ -3,10 +3,12 @@ import { requireWorkspaceUser } from "@/lib/workspace/requireWorkspaceUser";
 import { getWorkspaceOverview } from "@/lib/workspace/queries";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { listMembershipsForUser } from "@/lib/workspace/membership";
+import { canApproveAgentProposals, mapOrgRoleToJobFunction } from "@/lib/workspace/roles";
 import { PILOT_PREVIEW } from "@/lib/workspace/sampleWorkspace";
 import type { ObligationRow } from "@/lib/workspace/types";
 import { EmptyState, PilotBanner, ReviewBadge } from "../ui";
 import { ArdrExportClient } from "./ArdrExportClient";
+import { ArdrImportClient } from "./ArdrImportClient";
 
 export const metadata: Metadata = { title: "Obligations" };
 
@@ -14,10 +16,12 @@ export default async function ObligationsPage() {
   const user = await requireWorkspaceUser();
   const overview = await getWorkspaceOverview(user);
   let rows: ObligationRow[] = overview.upcomingObligations;
+  let canImport = false;
 
   if (overview.mode === "live") {
     const memberships = await listMembershipsForUser(user);
     if (memberships[0]) {
+      canImport = canApproveAgentProposals(mapOrgRoleToJobFunction(memberships[0].role));
       const supabase = await createSupabaseServerClient();
       const { data } = await supabase
         .from("obligations")
@@ -50,6 +54,10 @@ export default async function ObligationsPage() {
         facilities={overview.facilities.map((f) => ({ id: f.id, name: f.name }))}
         preview={overview.mode === "pilot_preview"}
       />
+
+      {canImport && overview.facilities.length > 0 ? (
+        <ArdrImportClient facilities={overview.facilities.map((f) => ({ id: f.id, name: f.name }))} />
+      ) : null}
 
       {rows.length === 0 ? (
         <div className="mt-6">

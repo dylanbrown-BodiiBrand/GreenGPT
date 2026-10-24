@@ -5,6 +5,8 @@ import type {
   AgentProposal,
   AuthzResult,
   HumanPrincipal,
+  ProposalKind,
+  SupportingSource,
   TriggerActor,
 } from "./types";
 
@@ -147,6 +149,7 @@ export function assertCanManageAgent(human: HumanPrincipal, organizationId: stri
 
 const FORBIDDEN_REVIEW_STATES = new Set(["approved"]);
 const FORBIDDEN_CAP_STATUSES = new Set(["closed"]);
+const FORBIDDEN_RECORD_STATUSES = new Set(["approved", "completed"]);
 
 export function assertPayloadNotConsequentialWrite(payload: Record<string, unknown>): AuthzResult {
   const reviewState = payload.review_state ?? payload.reviewState;
@@ -157,8 +160,25 @@ export function assertPayloadNotConsequentialWrite(payload: Record<string, unkno
   if (typeof status === "string" && FORBIDDEN_CAP_STATUSES.has(status)) {
     return deny("AGENT_CANNOT_CLOSE_CAP", "Agent cannot close a corrective action.");
   }
+  if (typeof status === "string" && FORBIDDEN_RECORD_STATUSES.has(status)) {
+    return deny("AGENT_CANNOT_APPROVE_RECORD", "Agent cannot mark a record approved or completed.");
+  }
   if (payload.sendEmail || payload.externalCommunication || payload.notifyRegulator) {
     return deny("AGENT_CANNOT_SEND", "Agent cannot send external communications.");
+  }
+  return allow();
+}
+
+export function assertProposalGrounded(
+  kind: ProposalKind,
+  payload: Record<string, unknown>,
+  sources: SupportingSource[]
+): AuthzResult {
+  if (kind !== "obligation") return allow();
+  const citation = typeof payload.sourceCitation === "string" ? payload.sourceCitation.trim() : "";
+  const fromArdr = sources.some((s) => Boolean(s.filename?.trim() && s.excerpt?.trim()));
+  if (!citation || !fromArdr) {
+    return deny("UNSOURCED_OBLIGATION", "An obligation proposal requires a citation and its ARDR source row.");
   }
   return allow();
 }
@@ -168,6 +188,7 @@ export function forceDraftPayload(payload: Record<string, unknown>): Record<stri
   if ("review_state" in next) next.review_state = "draft";
   if ("reviewState" in next) next.reviewState = "draft";
   if (next.status === "closed") next.status = "open";
+  if (next.status === "approved" || next.status === "completed") next.status = "draft";
   delete next.sendEmail;
   delete next.externalCommunication;
   delete next.notifyRegulator;

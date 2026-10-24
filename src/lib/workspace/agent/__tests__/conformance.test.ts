@@ -4,6 +4,7 @@ import { AgentControlPlane } from "../plane";
 import { validateActionEventCompleteness, isDualActorApply } from "../ledger";
 import { filterChunksForTenant } from "../retrieval";
 import { assertPayloadNotConsequentialWrite } from "../authorization";
+import type { ArdrImportRow } from "../../ardrImport";
 import type { ObligationRow } from "../../types";
 import type { AgentPrincipal, HumanPrincipal } from "../types";
 
@@ -49,6 +50,38 @@ function obligation(over: Partial<ObligationRow> = {}): ObligationRow {
   };
 }
 
+function ardrRow(over: Partial<ArdrImportRow> = {}): ArdrImportRow {
+  return {
+    sheet: "Safety (OSHA)",
+    rowNumber: over.rowNumber ?? 6,
+    programTopic: "Hazard Communication (GHS)",
+    requirement: over.requirement ?? "Written hazard communication program",
+    citation: over.citation ?? "29 CFR 1910.1200(e)(1)",
+    applies: over.applies ?? "yes",
+    referenceDocuments: "HazCom Program rev. 3",
+    implementation: "SDS library current",
+    owner: "EHS Manager",
+    frequency: "Annual review",
+    nextActionDue: "2027-01-15",
+    notes: "",
+    ...over,
+  };
+}
+
+function importContext(rows: ArdrImportRow[], obligations: ObligationRow[] = []) {
+  return {
+    organizationId: "org-1",
+    organizationName: "Acme",
+    facilityId: "fac-1",
+    facilityName: "Plant 1",
+    obligations,
+    actions: [],
+    evidence: [],
+    ardrRows: rows,
+    ardrFilename: "Plant1-ARDR.xlsx",
+  };
+}
+
 function seededPlane(agentOver: Partial<AgentPrincipal> = {}) {
   const plane = new AgentControlPlane(clock());
   const manager = human({ jobFunction: "ehs_manager", orgRole: "owner" });
@@ -61,7 +94,7 @@ function seededPlane(agentOver: Partial<AgentPrincipal> = {}) {
 }
 
 describe("ICA conformance suite", () => {
-  it("lists ICA-01 through ICA-12", () => {
+  it("lists ICA-01 through ICA-16", () => {
     expect(CONFORMANCE_TESTS.map((t) => t.id)).toEqual([
       "ICA-01",
       "ICA-02",
@@ -75,6 +108,10 @@ describe("ICA conformance suite", () => {
       "ICA-10",
       "ICA-11",
       "ICA-12",
+      "ICA-13",
+      "ICA-14",
+      "ICA-15",
+      "ICA-16",
     ]);
   });
 
@@ -400,6 +437,144 @@ describe("ICA conformance suite", () => {
     });
     expect(second.result.ok).toBe(false);
     if (!second.result.ok) expect(second.result.code).toBe("DUPLICATE_PROPOSAL");
+  });
+
+  it("ICA-13 unsourced-obligation-refused", () => {
+    const { plane, manager, agentId } = seededPlane();
+    const run = plane.startRun({
+      actor: manager,
+      agentId,
+      organizationId: "org-1",
+      facilityId: "fac-1",
+      trigger: "ardr_import",
+    });
+    const noCitation = plane.createProposal({
+      agentId,
+      runId: run.run!.id,
+      organizationId: "org-1",
+      facilityId: "fac-1",
+      kind: "obligation",
+      dedupeKey: "obligation:fac-1::invented",
+      payload: { title: "Invented requirement", sourceCitation: "", status: "draft", review_state: "draft" },
+      supportingSources: [{ filename: "Plant1-ARDR.xlsx", excerpt: "Safety row 6" }],
+      toolName: "import_ardr",
+    });
+    expect(noCitation.result.ok).toBe(false);
+    if (!noCitation.result.ok) expect(noCitation.result.code).toBe("UNSOURCED_OBLIGATION");
+
+    const noSourceRow = plane.createProposal({
+      agentId,
+      runId: run.run!.id,
+      organizationId: "org-1",
+      facilityId: "fac-1",
+      kind: "obligation",
+      dedupeKey: "obligation:fac-1:40 cfr 112:spcc",
+      payload: { title: "SPCC plan", sourceCitation: "40 CFR 112", status: "draft", review_state: "draft" },
+      supportingSources: [],
+      toolName: "import_ardr",
+    });
+    expect(noSourceRow.result.ok).toBe(false);
+    if (!noSourceRow.result.ok) expect(noSourceRow.result.code).toBe("UNSOURCED_OBLIGATION");
+
+    const executed = plane.executeTool({
+      runId: run.run!.id,
+      tool: "import_ardr",
+      context: importContext([ardrRow({ citation: "" })]),
+    });
+    expect(executed.proposals).toHaveLength(0);
+  });
+
+  it("ICA-14 approved-obligation-lands-draft", () => {
+    expect(assertPayloadNotConsequentialWrite({ status: "approved" }).ok).toBe(false);
+    expect(assertPayloadNotConsequentialWrite({ status: "completed" }).ok).toBe(false);
+    const { plane, manager, agentId } = seededPlane();
+    const run = plane.startRun({
+      actor: manager,
+      agentId,
+      organizationId: "org-1",
+      facilityId: "fac-1",
+      trigger: "ardr_import",
+    });
+    const executed = plane.executeTool({
+      runId: run.run!.id,
+      tool: "import_ardr",
+      context: importContext([ardrRow()]),
+    });
+    expect(executed.result.ok).toBe(true);
+    expect(executed.proposals).toHaveLength(1);
+    const decision = plane.decideProposal({
+      proposalId: executed.proposals[0].id,
+      actor: manager,
+      human: manager,
+      decision: "approved",
+    });
+    expect(decision.result.ok).toBe(true);
+    expect(decision.entity?.type).toBe("obligation");
+    expect(decision.entity?.data.status).toBe("draft");
+    expect(decision.entity?.data.review_state).toBe("draft");
+  });
+
+  it("ICA-15 duplicate-obligation-rejected", () => {
+    const { plane, manager, agentId } = seededPlane();
+    const run = plane.startRun({
+      actor: manager,
+      agentId,
+      organizationId: "org-1",
+      facilityId: "fac-1",
+      trigger: "ardr_import",
+    });
+    const inRegister = obligation({ title: "SPCC plan implementation", facility_id: "fac-1" });
+    const first = plane.executeTool({
+      runId: run.run!.id,
+      tool: "import_ardr",
+      context: importContext(
+        [
+          ardrRow(),
+          ardrRow({ rowNumber: 7 }),
+          ardrRow({ rowNumber: 8, requirement: "SPCC plan implementation", citation: "40 CFR 112" }),
+        ],
+        [inRegister]
+      ),
+    });
+    expect(first.result.ok).toBe(true);
+    expect(first.proposals).toHaveLength(1);
+
+    const rerun = plane.startRun({
+      actor: manager,
+      agentId,
+      organizationId: "org-1",
+      facilityId: "fac-1",
+      trigger: "ardr_import",
+    });
+    const second = plane.executeTool({
+      runId: rerun.run!.id,
+      tool: "import_ardr",
+      context: importContext([ardrRow()]),
+    });
+    expect(second.proposals).toHaveLength(0);
+  });
+
+  it("ICA-16 non-applicable-row-not-imported", () => {
+    const { plane, manager, agentId } = seededPlane();
+    const run = plane.startRun({
+      actor: manager,
+      agentId,
+      organizationId: "org-1",
+      facilityId: "fac-1",
+      trigger: "ardr_import",
+    });
+    const executed = plane.executeTool({
+      runId: run.run!.id,
+      tool: "import_ardr",
+      context: importContext([
+        ardrRow({ rowNumber: 5, requirement: "Applies", applies: "yes" }),
+        ardrRow({ rowNumber: 6, requirement: "Unsure", applies: "tbd" }),
+        ardrRow({ rowNumber: 7, requirement: "Not applicable", applies: "no" }),
+        ardrRow({ rowNumber: 8, requirement: "Not assessed", applies: "blank" }),
+      ]),
+    });
+    expect(executed.result.ok).toBe(true);
+    expect(executed.proposals.map((p) => p.payload.title).sort()).toEqual(["Applies", "Unsure"]);
   });
 
   it("filters retrieval hits across tenants", () => {

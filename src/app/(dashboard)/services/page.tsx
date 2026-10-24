@@ -162,9 +162,9 @@ export default function ServicesPage() {
           and approved. Not legal advice. Your organization remains the final decision owner. Agent identity,
           authorization, revocation, and agent-action audit are defined by the{" "}
           <Link href="/controls" className="underline">
-            Industrial Compliance Agent Control Specification v1.0
+            Industrial Compliance Agent Control Specification v1.1
           </Link>{" "}
-          and verified by conformance tests ICA-01–ICA-12. Dedicated instances and additional tenant isolation remain
+          and verified by conformance tests ICA-01–ICA-16. Dedicated instances and additional tenant isolation remain
           engagement-specific configuration.
         </p>
       </section>

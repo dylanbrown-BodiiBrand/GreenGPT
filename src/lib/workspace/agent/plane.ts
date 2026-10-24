@@ -7,11 +7,12 @@ import {
   assertCanUseTool,
   assertHumanCanApprove,
   assertPayloadNotConsequentialWrite,
+  assertProposalGrounded,
   deny,
   forceDraftPayload,
 } from "./authorization";
 import { normalizeSources, validateActionEventCompleteness } from "./ledger";
-import { capabilityForTool, planTool, type ToolContext, type ToolName } from "./tools";
+import { capabilityForTool, planTool, proposalCapForTool, type ToolContext, type ToolName } from "./tools";
 import type {
   AgentActionEvent,
   AgentPrincipal,
@@ -23,7 +24,7 @@ import type {
   HumanPrincipal,
   TriggerActor,
 } from "./types";
-import { DEFAULT_AGENT_NAME, DEFAULT_CAPABILITIES, MAX_PROPOSALS_PER_RUN } from "./types";
+import { DEFAULT_AGENT_NAME, DEFAULT_CAPABILITIES } from "./types";
 
 export type PlaneClock = {
   now: () => string;
@@ -233,7 +234,7 @@ export class AgentControlPlane {
 
     const created: AgentProposal[] = [];
     for (const item of planned) {
-      if (created.length >= MAX_PROPOSALS_PER_RUN) break;
+      if (created.length >= proposalCapForTool(input.tool)) break;
       if (run.facilityId && item.facilityId && item.facilityId !== run.facilityId) {
         return { result: deny("FACILITY_SCOPE", "Agent is not authorized for this facility."), proposals: created };
       }
@@ -242,6 +243,8 @@ export class AgentControlPlane {
       }
       const payloadCheck = assertPayloadNotConsequentialWrite(item.payload);
       if (!payloadCheck.ok) return { result: payloadCheck, proposals: created };
+      const grounded = assertProposalGrounded(item.kind, item.payload, item.supportingSources);
+      if (!grounded.ok) return { result: grounded, proposals: created };
       if (pendingDedupeKeys.includes(item.dedupeKey) || created.some((p) => p.dedupeKey === item.dedupeKey)) {
         return { result: deny("DUPLICATE_PROPOSAL", "A pending proposal already exists for this finding and facility."), proposals: created };
       }
@@ -307,7 +310,9 @@ export class AgentControlPlane {
         ? "propose_tasks"
         : input.kind === "deadline_alert"
           ? "identify_deadlines"
-          : "prepare_records";
+          : input.kind === "obligation"
+            ? "populate_register"
+            : "prepare_records";
     const authz = assertCanUseTool({
       agent,
       capability,
@@ -317,6 +322,8 @@ export class AgentControlPlane {
     if (!authz.ok) return { result: authz };
     const payloadCheck = assertPayloadNotConsequentialWrite(input.payload);
     if (!payloadCheck.ok) return { result: payloadCheck };
+    const grounded = assertProposalGrounded(input.kind, input.payload, input.supportingSources);
+    if (!grounded.ok) return { result: grounded };
     const duplicate = [...this.proposals.values()].some(
       (p) => p.status === "pending" && p.dedupeKey === input.dedupeKey && p.organizationId === input.organizationId
     );
