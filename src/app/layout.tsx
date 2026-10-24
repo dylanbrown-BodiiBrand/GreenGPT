@@ -30,7 +30,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <p>© {new Date().getFullYear()} GreenGPT Advisory. Managed EHS compliance systems for industrial facilities.</p>
             <p className="mt-2 max-w-2xl mx-auto text-xs text-gray-400">
               GreenGPT assists qualified EHS professionals. Outputs are drafts until reviewed and approved.
-              Not legal advice. Your organization remains the final decision owner.
+              Not legal advice. Your organization remains the final decision owner.{" "}
+              <a href="/controls" className="underline hover:text-gray-600">
+                Agent control specification
+              </a>
+              .
             </p>
           </footer>
         </ThemeProvider>

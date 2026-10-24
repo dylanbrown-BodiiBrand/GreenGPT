@@ -6,7 +6,7 @@ import {
   parseUpdateEvidence,
 } from "../parsers";
 import { buildBriefingContent, defaultInspectionChecklist } from "../briefingBuilder";
-import { canEditWorkspace } from "../roles";
+import { canApproveAgentProposals, canEditWorkspace, canManageAgents, mapOrgRoleToJobFunction } from "../roles";
 
 describe("workspace parsers", () => {
   it("parses corrective action create", () => {
@@ -47,6 +47,17 @@ describe("roles and briefing builder", () => {
   it("allows editor roles only", () => {
     expect(canEditWorkspace("editor")).toBe(true);
     expect(canEditWorkspace("viewer")).toBe(false);
+  });
+
+  it("maps org roles to job functions", () => {
+    expect(mapOrgRoleToJobFunction("owner")).toBe("ehs_manager");
+    expect(mapOrgRoleToJobFunction("admin")).toBe("ehs_manager");
+    expect(mapOrgRoleToJobFunction("editor")).toBe("facility_admin");
+    expect(mapOrgRoleToJobFunction("viewer")).toBe("employee");
+    expect(canManageAgents("ehs_manager")).toBe(true);
+    expect(canManageAgents("facility_admin")).toBe(false);
+    expect(canApproveAgentProposals("employee")).toBe(false);
+    expect(canApproveAgentProposals("facility_admin")).toBe(true);
   });
 
   it("builds management attention from open work", () => {

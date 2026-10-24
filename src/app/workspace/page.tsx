@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireWorkspaceUser } from "@/lib/workspace/requireWorkspaceUser";
 import { getWorkspaceOverview } from "@/lib/workspace/queries";
+import { listMembershipsForUser } from "@/lib/workspace/membership";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { listPendingProposals } from "@/lib/workspace/agent/persist";
+import { canApproveAgentProposals, mapOrgRoleToJobFunction } from "@/lib/workspace/roles";
 import { EmptyState, PilotBanner, ReviewBadge, StatCard } from "./ui";
+import { OverviewAgentActions } from "./OverviewAgentActions";
 
 export const metadata: Metadata = {
   title: "Workspace Overview",
@@ -12,6 +17,19 @@ export const metadata: Metadata = {
 export default async function WorkspaceOverviewPage() {
   const user = await requireWorkspaceUser("/workspace");
   const data = await getWorkspaceOverview(user);
+  const memberships = await listMembershipsForUser(user);
+  const canRunAgent = memberships[0]
+    ? canApproveAgentProposals(mapOrgRoleToJobFunction(memberships[0].role))
+    : false;
+  let pendingCount = 0;
+  if (data.mode === "live" && memberships[0]) {
+    try {
+      const supabase = await createSupabaseServerClient();
+      pendingCount = (await listPendingProposals(supabase, memberships[0].organizationId)).length;
+    } catch {
+      pendingCount = 0;
+    }
+  }
 
   return (
     <div>
@@ -28,12 +46,21 @@ export default async function WorkspaceOverviewPage() {
         </Link>
       </div>
 
-      <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="Facilities" value={data.facilities.length} />
         <StatCard label="Upcoming obligations" value={data.upcomingObligations.length} hint="Next 30 days" />
         <StatCard label="Overdue actions" value={data.overdueActions.length} />
         <StatCard label="Missing evidence" value={data.missingEvidence.length} />
+        <StatCard label="Pending agent approvals" value={pendingCount} />
       </div>
+
+      {data.mode === "live" && (
+        <OverviewAgentActions
+          facilities={data.facilities.map((f) => ({ id: f.id, name: f.name }))}
+          canRunAgent={canRunAgent}
+          pendingCount={pendingCount}
+        />
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-xl border border-[#E8E6E0] bg-white p-5">

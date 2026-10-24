@@ -12,6 +12,8 @@ const LINKS = [
   { href: "/workspace/evidence", label: "Evidence" },
   { href: "/workspace/documents", label: "Documents" },
   { href: "/workspace/ask", label: "Ask GreenGPT" },
+  { href: "/workspace/approvals", label: "Approvals" },
+  { href: "/workspace/agents", label: "Agents" },
   { href: "/workspace/briefings", label: "Briefings" },
   { href: "/workspace/audit", label: "Audit" },
 ] as const;

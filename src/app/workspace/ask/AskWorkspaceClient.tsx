@@ -24,13 +24,17 @@ type AskResult = {
 export function AskWorkspaceClient({
   facilities,
   mode,
+  canRunAgent,
 }: {
   facilities: FacilityOption[];
   mode: "live" | "pilot_preview";
+  canRunAgent: boolean;
 }) {
   const [facilityId, setFacilityId] = useState(facilities[0]?.id ?? "");
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [runMessage, setRunMessage] = useState<string | null>(null);
   const [current, setCurrent] = useState<AskResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,6 +76,36 @@ export function AskWorkspaceClient({
       setError(err instanceof Error ? err.message : "Ask failed.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runAgent = async () => {
+    if (!canRunAgent || mode !== "live" || facilityId.startsWith("preview-")) return;
+    setRunning(true);
+    setError(null);
+    setRunMessage(null);
+    try {
+      const res = await fetch("/api/workspace/agent-runs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          facilityId,
+          trigger: "ask_workspace",
+          tools: ["identify_deadlines", "propose_tasks", "prepare_records"],
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Agent run failed.");
+      const count = Number(data.proposalCount ?? 0);
+      setRunMessage(
+        count
+          ? `${count} proposal(s) waiting in Approvals. Nothing was written until a human authorizes it.`
+          : "Run completed with no new proposals (nothing overdue, or duplicates were blocked)."
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Agent run failed.");
+    } finally {
+      setRunning(false);
     }
   };
 
@@ -119,13 +153,26 @@ export function AskWorkspaceClient({
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={!question.trim() || loading}
-          className="rounded-lg bg-[#0B3D2E] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0a3326] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {loading ? "Searching approved sources…" : "Ask GreenGPT"}
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={!question.trim() || loading}
+            className="rounded-lg bg-[#0B3D2E] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0a3326] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? "Searching approved sources…" : "Ask GreenGPT"}
+          </button>
+          {canRunAgent && mode === "live" && (
+            <button
+              type="button"
+              onClick={runAgent}
+              disabled={running || !facilityId || facilityId.startsWith("preview-")}
+              className="rounded-lg border border-[#0B3D2E] px-5 py-2.5 text-sm font-semibold text-[#0B3D2E] hover:bg-[#ECFDF5] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {running ? "Preparing proposals…" : "Review upcoming deadlines"}
+            </button>
+          )}
+        </div>
+        {runMessage && <p className="text-sm text-[#0B3D2E]">{runMessage}</p>}
       </form>
 
       {error && (

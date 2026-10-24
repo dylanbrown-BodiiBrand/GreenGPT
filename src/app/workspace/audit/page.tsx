@@ -3,11 +3,13 @@ import { requireWorkspaceUser } from "@/lib/workspace/requireWorkspaceUser";
 import { listMembershipsForUser } from "@/lib/workspace/membership";
 import { getWorkspaceOverview } from "@/lib/workspace/queries";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { listActionEvents } from "@/lib/workspace/agent/persist";
 import { EmptyState, PilotBanner } from "../ui";
+import { AuditTrailClient } from "./AuditTrailClient";
 
 export const metadata: Metadata = { title: "Audit Trail" };
 
-type AuditRow = {
+type HumanAuditRow = {
   id: number;
   actor_email: string;
   entity_type: string;
@@ -23,7 +25,8 @@ export default async function AuditPage() {
   const overview = await getWorkspaceOverview(user);
   const memberships = await listMembershipsForUser(user);
 
-  let rows: AuditRow[] = [];
+  let humanRows: HumanAuditRow[] = [];
+  let agentEvents: Awaited<ReturnType<typeof listActionEvents>> = [];
   if (overview.mode === "live" && memberships[0]) {
     const supabase = await createSupabaseServerClient();
     const { data } = await supabase
@@ -32,7 +35,12 @@ export default async function AuditPage() {
       .eq("organization_id", memberships[0].organizationId)
       .order("created_at", { ascending: false })
       .limit(100);
-    rows = (data ?? []) as AuditRow[];
+    humanRows = (data ?? []) as HumanAuditRow[];
+    try {
+      agentEvents = await listActionEvents(supabase, memberships[0].organizationId);
+    } catch {
+      agentEvents = [];
+    }
   }
 
   return (
@@ -40,54 +48,20 @@ export default async function AuditPage() {
       <PilotBanner mode={overview.mode} />
       <h2 className="text-2xl font-semibold text-[#0B3D2E]">Audit trail</h2>
       <p className="mt-1 text-sm text-[#374944]">
-        Who created or changed actions, evidence, inspection prep, and briefing review states.
+        Human changes and agent actions. Agent rows show who authorized the run, tools used, supporting
+        sources, the proposed diff, and whether approval was obtained.
       </p>
 
       {overview.mode === "pilot_preview" ? (
         <div className="mt-6">
           <EmptyState
             title="Audit trail unavailable in preview"
-            body="After your organization is provisioned, create/update events appear here with actor email and state transitions."
-          />
-        </div>
-      ) : rows.length === 0 ? (
-        <div className="mt-6">
-          <EmptyState
-            title="No audit events yet"
-            body="Events are recorded when editors create or update workspace records."
+            body="After your organization is provisioned, create/update events appear here with actor email and state transitions. Agent actions include authorizer, tools, sources, and approval."
           />
         </div>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-xl border border-[#E8E6E0] bg-white">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-[#E8E6E0] bg-[#F8FAF9] text-xs uppercase tracking-wide text-[#6B7280]">
-              <tr>
-                <th className="px-4 py-3">When</th>
-                <th className="px-4 py-3">Actor</th>
-                <th className="px-4 py-3">Entity</th>
-                <th className="px-4 py-3">Action</th>
-                <th className="px-4 py-3">State</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-b border-[#F3F4F6] last:border-0">
-                  <td className="px-4 py-3 text-[#374944]">
-                    {new Date(r.created_at).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-[#1B2A22]">{r.actor_email}</td>
-                  <td className="px-4 py-3 text-[#374944]">
-                    {r.entity_type}
-                    {r.entity_id ? ` · ${r.entity_id.slice(0, 8)}` : ""}
-                  </td>
-                  <td className="px-4 py-3 text-[#374944]">{r.action}</td>
-                  <td className="px-4 py-3 text-[#374944]">
-                    {(r.from_state ?? "—") + " → " + (r.to_state ?? "—")}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="mt-6">
+          <AuditTrailClient humanRows={humanRows} agentEvents={agentEvents} />
         </div>
       )}
     </div>

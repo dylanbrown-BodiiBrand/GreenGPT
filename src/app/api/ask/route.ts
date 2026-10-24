@@ -4,7 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
 import { requireSessionUser } from "@/lib/auth/requireSessionUser";
-import { assertFacilityAccess } from "@/lib/workspace/membership";
+import { assertFacilityAccess, listMembershipsForUser } from "@/lib/workspace/membership";
+import { logAskRetrieval } from "@/lib/workspace/agent/askLog";
+import { filterChunksForTenant } from "@/lib/workspace/agent/retrieval";
 import { INSUFFICIENT_SOURCES_MESSAGE } from "@/lib/workspace/types";
 import { embedBatch } from "@/utils/embeddings";
 import { makeLogger, errorResponse } from "@/utils/debug";
@@ -63,9 +65,14 @@ export async function POST(req: NextRequest) {
         ? payload.facilityId.trim()
         : null;
 
+    let organizationId: string | null = null;
     if (facilityId) {
       const access = await assertFacilityAccess(user, facilityId);
       facilityLabel = access.facilityName;
+      organizationId = access.organizationId;
+    } else {
+      const memberships = await listMembershipsForUser(user);
+      organizationId = memberships[0]?.organizationId ?? null;
     }
 
     dlog("question", "received", { question, facilityId, facilityLabel });
@@ -83,18 +90,42 @@ export async function POST(req: NextRequest) {
       return errorResponse(500, rid, "retrieve", "VECTOR_RPC_FAILED", error.message);
     }
 
-    const scored = (hits || []).filter(
-      (h: { score?: number; content?: string }) =>
-        h?.content && (typeof h.score !== "number" || h.score >= MIN_SOURCE_SCORE)
+    type Hit = {
+      document_id: string;
+      content: string;
+      score?: number;
+      page_or_sheet?: string;
+      section_path?: string;
+    };
+    let scored: Hit[] = (hits || []).filter(
+      (h: { score?: number; content?: string; document_id?: string }): h is Hit =>
+        Boolean(h?.document_id && h?.content) &&
+        (typeof h.score !== "number" || h.score >= MIN_SOURCE_SCORE)
     );
 
     const ids = Array.from(new Set(scored.map((h: { document_id: string }) => h.document_id)));
     const docMeta = new Map<string, { filename: string }>();
+    const tenantDocs: { id: string; organization_id?: string | null; facility_id?: string | null }[] = [];
     if (ids.length) {
-      const { data: docs } = await supabase.from("documents").select("id, filename").in("id", ids);
+      const withTenant = await supabase
+        .from("documents")
+        .select("id, filename, organization_id, facility_id")
+        .in("id", ids);
+      const docs = withTenant.error
+        ? (await supabase.from("documents").select("id, filename").in("id", ids)).data
+        : withTenant.data;
       for (const d of docs ?? []) {
         docMeta.set(d.id, { filename: d.filename });
+        tenantDocs.push({
+          id: d.id,
+          organization_id: "organization_id" in d ? (d.organization_id as string | null) : null,
+          facility_id: "facility_id" in d ? (d.facility_id as string | null) : null,
+        });
       }
+    }
+
+    if (organizationId) {
+      scored = filterChunksForTenant(scored, tenantDocs, { organizationId, facilityId });
     }
 
     let usedTokens = 0;
@@ -119,6 +150,16 @@ export async function POST(req: NextRequest) {
     }));
 
     if (!selected.length) {
+      if (organizationId) {
+        await logAskRetrieval({
+          supabase,
+          organizationId,
+          facilityId,
+          question,
+          answer: INSUFFICIENT_SOURCES_MESSAGE,
+          sources: [],
+        });
+      }
       return NextResponse.json(
         draftEnvelope({
           answer: INSUFFICIENT_SOURCES_MESSAGE,
@@ -160,6 +201,20 @@ export async function POST(req: NextRequest) {
       );
 
     if (hedging) {
+      if (organizationId) {
+        await logAskRetrieval({
+          supabase,
+          organizationId,
+          facilityId,
+          question,
+          answer: INSUFFICIENT_SOURCES_MESSAGE,
+          sources: sources.map((s) => ({
+            documentId: s.documentId,
+            filename: s.filename,
+            score: s.score,
+          })),
+        });
+      }
       return NextResponse.json(
         draftEnvelope({
           answer: INSUFFICIENT_SOURCES_MESSAGE,
@@ -168,6 +223,21 @@ export async function POST(req: NextRequest) {
           facilityLabel,
         })
       );
+    }
+
+    if (organizationId) {
+      await logAskRetrieval({
+        supabase,
+        organizationId,
+        facilityId,
+        question,
+        answer,
+        sources: sources.map((s) => ({
+          documentId: s.documentId,
+          filename: s.filename,
+          score: s.score,
+        })),
+      });
     }
 
     return NextResponse.json(
